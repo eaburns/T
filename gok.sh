@@ -24,7 +24,7 @@ echo misspell
 misspell . > $o 2>&1 || fail
 
 echo gocyclo
-gocyclo -over 15 . > $o 2>&1 || fail
+gocyclo -over 15 . || fail
 
 echo go test
 go test -test.timeout=60s ./... > $o 2>&1 || fail
@@ -37,5 +37,6 @@ golint ./... \
 e=$(mktemp tmp.XXXXXXXXXX)
 touch $e
 diff $o $e > /dev/null || { rm $e; fail; }
+rm $e
 
-rm $o $e
+rm $o
