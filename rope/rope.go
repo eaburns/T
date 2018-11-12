@@ -262,10 +262,11 @@ func (r *ReverseReader) ReadByte() (byte, error) {
 // ReadRune does not return errors other than io.EOF.
 func (r *ReverseReader) ReadRune() (rune, int, error) {
 	for invalidUTF8(r.buf[:r.n]) && r.n < len(r.buf) {
-		r.buf[1], r.buf[2], r.buf[3] = r.buf[0], r.buf[1], r.buf[2]
-		if _, err := r.read(r.buf[:1]); err == io.EOF {
+		var b [1]byte
+		if _, err := r.read(b[:]); err == io.EOF {
 			break
 		}
+		r.buf[0], r.buf[1], r.buf[2], r.buf[3] = b[0], r.buf[0], r.buf[1], r.buf[2]
 		r.n++
 	}
 	if r.n == 0 {

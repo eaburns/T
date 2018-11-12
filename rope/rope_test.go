@@ -225,6 +225,10 @@ func TestReadRune(t *testing.T) {
 		{rope: smallRope, text: smallText},
 		{rope: deepRope, text: deepText},
 		{
+			rope: New(repl),
+			text: repl,
+		},
+		{
 			// Three bad UTF8 bytes give three replacement characters.
 			rope: New("\x80\x80\x80abc"),
 			text: repl + repl + repl + "abc",
@@ -340,6 +344,10 @@ func TestReverseReaderReadRune(t *testing.T) {
 		{rope: smallRope, text: reverseRunes(smallText)},
 		{rope: deepRope, text: reverseRunes(deepText)},
 		{
+			rope: New(repl),
+			text: repl,
+		},
+		{
 			// Three bad UTF8 bytes give three replacement characters.
 			rope: New("\x80\x80\x80abc"),
 			text: "cba" + repl + repl + repl,
@@ -443,7 +451,7 @@ func reverseRunes(str string) string {
 	return string(rs)
 }
 
-const repl = "\xEF\xBF\xBD"
+const repl = "\xef\xbf\xbd"
 
 var (
 	longText = strings.Repeat("Hello, 世界", smallSize*2/len("Hello, 世界"))
