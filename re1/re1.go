@@ -332,10 +332,7 @@ func esc(t string) (rune, string) {
 }
 
 // Find returns the left-most, longest match and sub-expression matches.
-func (re *Regexp) Find(rr io.RuneReader) []int64 {
-	debug("prog:\n%s\n", re.DebugString())
-	return run(newVM(re, rr))
-}
+func (re *Regexp) Find(rr io.RuneReader) []int64 { return run(newVM(re, rr)) }
 
 type vm struct {
 	re        *Regexp
@@ -380,7 +377,6 @@ func newMem(v *vm, init []int64) (m []int64) {
 }
 
 func run(v *vm) []int64 {
-	debug("%2d, c=%q (%[2]x), n=%q (%[3]x)\n", v.at, v.c, v.n)
 	for {
 		if v.match == nil {
 			add(v, 0, newMem(v, nil))
@@ -391,7 +387,6 @@ func run(v *vm) []int64 {
 		}
 		read(v)
 		v.cur, v.next = v.next, v.cur[:0]
-		debug("%2d, c=%c (%[2]x), n=%c (%[3]x)\n", v.at, v.c, v.n)
 		for _, t := range v.cur {
 			step(v, t.pc, t.mem)
 		}
@@ -413,8 +408,6 @@ func read(v *vm) {
 }
 
 func step(v *vm, pc int, mem []int64) {
-	debug("	step %d %v\n", pc, mem)
-	debug("		%s\n", v.re.prog[pc].DebugString(v.re, pc))
 	if !accepts(v, v.re.prog[pc]) {
 		v.free = append(v.free, mem)
 		return
@@ -456,7 +449,6 @@ func add(v *vm, pc int, mem []int64) {
 }
 
 func _add(v *vm, pc int, mem []int64) {
-	debug("		%s\n", v.re.prog[pc].DebugString(v.re, pc))
 	switch instr := v.re.prog[pc]; instr.op {
 	default:
 		v.next = append(v.next, thread{pc: pc, mem: mem})
@@ -486,7 +478,6 @@ func _add(v *vm, pc int, mem []int64) {
 		}
 		add(v, pc+1, mem)
 	case match:
-		debug("			%v\n", mem)
 		setMatch(v, mem)
 	}
 }
