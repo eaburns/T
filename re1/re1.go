@@ -6,8 +6,8 @@
 // (https://github.com/google/re2).
 //
 // The grammar is:
-// 	regexp = alternate.
-// 	alternate = concat [ "|" alternate ].
+// 	regexp = choice.
+// 	choice = concat [ "|" choice ].
 // 	concat = repeat [ concat ].
 // 	repeat = term { "*" | "+" | "?" }.
 // 	term = "." | "^" | "$" | "(" regexp ")" | charclass | literal.
@@ -16,7 +16,7 @@
 // 	A classlit is any non-"]", non-"-" rune or a rune preceded by \.
 //
 // The meta characters are:
-// 	| alternation
+// 	| choice
 // 	* zero or more, greedy
 // 	+ one or more, greedy
 // 	? zero or one
@@ -61,7 +61,7 @@ type Opts struct {
 // or an un-escaped delimiter (if set in opts).
 func New(t string, opts Opts) (*Regexp, string, error) {
 	src := t
-	switch re, t, err := alternate(t, 0, opts); {
+	switch re, t, err := choice(t, 0, opts); {
 	case err != nil:
 		return nil, "", err
 	case re == nil:
@@ -93,7 +93,7 @@ type instr struct {
 	arg int
 }
 
-func alternate(t0 string, depth int, opts Opts) (*Regexp, string, error) {
+func choice(t0 string, depth int, opts Opts) (*Regexp, string, error) {
 	switch left, t, err := concat(t0, depth, opts); {
 	case err != nil:
 		return nil, "", err
@@ -104,10 +104,10 @@ func alternate(t0 string, depth int, opts Opts) (*Regexp, string, error) {
 	default:
 		_, t = next(t) // eat |
 		var right *Regexp
-		if right, t, err = alternate(t, depth, opts); err != nil {
+		if right, t, err = choice(t, depth, opts); err != nil {
 			return nil, "", err
 		}
-		return altProg(left, right), t, nil
+		return choiceProg(left, right), t, nil
 	}
 }
 
@@ -179,7 +179,7 @@ func term(t0 string, depth int, opts Opts) (*Regexp, string, error) {
 }
 
 func group(t string, depth int, opts Opts) (*Regexp, string, error) {
-	left, t, err := alternate(t, depth+1, opts)
+	left, t, err := choice(t, depth+1, opts)
 	switch r, t := next(t); {
 	case err != nil:
 		return nil, "", err
@@ -237,7 +237,7 @@ func charclass(t string) (*Regexp, string, error) {
 	return nil, "", errors.New("unclosed [")
 }
 
-func altProg(left, right *Regexp) *Regexp {
+func choiceProg(left, right *Regexp) *Regexp {
 	prog := make([]instr, 0, 2+len(left.prog)+len(right.prog))
 	prog = append(prog, instr{op: fork, arg: len(left.prog) + 2})
 	prog = append(prog, left.prog...)
