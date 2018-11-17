@@ -11,7 +11,7 @@ fail() {
 trap fail INT TERM
 
 echo gofmt
-gofmt -l $(find . -name '*.go') > $o 2>&1
+gofmt -s -l $(find . -name '*.go') > $o 2>&1
 test $(wc -l $o | awk '{ print $1 }') = "0" || fail
 
 echo govet

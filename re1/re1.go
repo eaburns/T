@@ -272,11 +272,11 @@ func repProg(left *Regexp, op rune) *Regexp {
 	case '+':
 		prog = append(left.prog, instr{op: rfork, arg: -len(left.prog)})
 	case '*':
-		prog = []instr{instr{op: fork, arg: len(left.prog) + 2}}
+		prog = []instr{{op: fork, arg: len(left.prog) + 2}}
 		prog = append(prog, left.prog...)
 		prog = append(prog, instr{op: rfork, arg: -len(prog) + 1})
 	case '?':
-		prog = []instr{instr{op: fork, arg: len(left.prog) + 1}}
+		prog = []instr{{op: fork, arg: len(left.prog) + 1}}
 		prog = append(prog, left.prog...)
 	}
 	left.prog = prog
