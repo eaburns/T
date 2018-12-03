@@ -201,7 +201,7 @@ type Diffs []Diff
 // A Diff describes a single change to a contiguous span of bytes.
 type Diff struct {
 	// At is the byte address of the span changed.
-	At Dot
+	At [2]int64
 	// Text is the text to which the span changed.
 	// Text may be nil if the addressed string was deleted.
 	Text rope.Rope
@@ -216,7 +216,7 @@ func (d Diff) TextLen() int64 {
 }
 
 // Update returns an updated dot accounting for the changes of the diffs.
-func (ds Diffs) Update(dot Dot) Dot {
+func (ds Diffs) Update(dot [2]int64) [2]int64 {
 	for _, d := range ds {
 		dot = d.Update(dot)
 	}
@@ -226,7 +226,7 @@ func (ds Diffs) Update(dot Dot) Dot {
 // Update returns an updated dot accounting for the change of the diff.
 // For example, if the diff added or deleted text before the dot,
 // then dot is increased or decreased accordingly.
-func (d Diff) Update(dot Dot) Dot {
+func (d Diff) Update(dot [2]int64) [2]int64 {
 	switch delta := d.TextLen() - (d.At[1] - d.At[0]); {
 	case d.At[0] >= dot[1]:
 		// after dot
@@ -281,30 +281,26 @@ func (d Diff) Apply(ro rope.Rope) (rope.Rope, Diff) {
 	if d.TextLen() > 0 {
 		ro = rope.Insert(ro, d.At[0], d.Text)
 	}
-	return ro, Diff{At: Dot{d.At[0], d.At[0] + d.TextLen()}, Text: deleted}
+	return ro, Diff{At: [2]int64{d.At[0], d.At[0] + d.TextLen()}, Text: deleted}
 }
 
-// Dot is the address of a string of runes in a rope.
-// The zero-value is the empty string at the beginning of the rope.
-type Dot [2]int64
-
 // Addr computes an address using the given value for dot.
-func Addr(dot Dot, t string, ro rope.Rope) (Dot, error) {
+func Addr(dot [2]int64, t string, ro rope.Rope) ([2]int64, error) {
 	var err error
 	switch dot, t, err = addr(&dot, ro, t); {
 	case err != nil:
-		return Dot{}, err
+		return [2]int64{}, err
 	case strings.TrimSpace(t) != "":
-		return Dot{}, errors.New("expected end-of-input")
+		return [2]int64{}, errors.New("expected end-of-input")
 	case dot[0] < 0:
-		return Dot{}, errors.New("no address")
+		return [2]int64{}, errors.New("no address")
 	default:
 		return dot, nil
 	}
 }
 
 // Edit computes an edit on the rope using the given value for dot.
-func Edit(dot Dot, t string, print io.Writer, ro rope.Rope) (Diffs, error) {
+func Edit(dot [2]int64, t string, print io.Writer, ro rope.Rope) (Diffs, error) {
 	switch ds, t, err := edit(dot, t, print, ro); {
 	case err != nil:
 		return nil, err
@@ -315,7 +311,7 @@ func Edit(dot Dot, t string, print io.Writer, ro rope.Rope) (Diffs, error) {
 	}
 }
 
-func edit(dot Dot, t string, print io.Writer, ro rope.Rope) (Diffs, string, error) {
+func edit(dot [2]int64, t string, print io.Writer, ro rope.Rope) (Diffs, string, error) {
 	a, t, err := addr(&dot, ro, t)
 	switch {
 	case err != nil:
@@ -350,7 +346,7 @@ func edit(dot Dot, t string, print io.Writer, ro rope.Rope) (Diffs, string, erro
 	}
 }
 
-func change(a Dot, t string, op rune, ro rope.Rope) (Diffs, string, error) {
+func change(a [2]int64, t string, op rune, ro rope.Rope) (Diffs, string, error) {
 	switch op {
 	case 'a':
 		a[0] = a[1]
@@ -446,7 +442,7 @@ func esc(r rune) rune {
 	}
 }
 
-func move(dot, a Dot, t string, ro rope.Rope) (Diffs, string, error) {
+func move(dot, a [2]int64, t string, ro rope.Rope) (Diffs, string, error) {
 	b, t, err := addr(&dot, ro, t)
 	switch {
 	case err != nil:
@@ -465,12 +461,12 @@ func move(dot, a Dot, t string, ro rope.Rope) (Diffs, string, error) {
 	}
 	ds := Diffs{
 		{At: a, Text: nil},
-		{At: Dot{b[1], b[1]}, Text: rope.Slice(ro, a[0], a[1])},
+		{At: [2]int64{b[1], b[1]}, Text: rope.Slice(ro, a[0], a[1])},
 	}
 	return ds, t, nil
 }
 
-func copy(dot, a Dot, t string, ro rope.Rope) (Diffs, string, error) {
+func copy(dot, a [2]int64, t string, ro rope.Rope) (Diffs, string, error) {
 	b, t, err := addr(&dot, ro, t)
 	switch {
 	case err != nil:
@@ -481,10 +477,10 @@ func copy(dot, a Dot, t string, ro rope.Rope) (Diffs, string, error) {
 	case b[0] < 0:
 		return nil, "", errors.New("expected address")
 	}
-	return Diffs{{At: Dot{b[1], b[1]}, Text: rope.Slice(ro, a[0], a[1])}}, t, nil
+	return Diffs{{At: [2]int64{b[1], b[1]}, Text: rope.Slice(ro, a[0], a[1])}}, t, nil
 }
 
-func sub(a Dot, t string, ro rope.Rope) (Diffs, string, error) {
+func sub(a [2]int64, t string, ro rope.Rope) (Diffs, string, error) {
 	n, t, _ := number(trimSpaceLeft(t))
 	delim, _ := next(trimSpaceLeft(t))
 	re, t, err := parseRegexp(t)
@@ -524,7 +520,7 @@ func sub(a Dot, t string, ro rope.Rope) (Diffs, string, error) {
 		}
 		s, _ := parseDelimited(tmpl, sub, delim)
 		ds = append(ds, Diff{
-			At:   Dot{ms[0] - adj, ms[1] - adj},
+			At:   [2]int64{ms[0] - adj, ms[1] - adj},
 			Text: rope.New(s),
 		})
 		if !global {
@@ -538,7 +534,7 @@ func sub(a Dot, t string, ro rope.Rope) (Diffs, string, error) {
 	return ds, t, nil
 }
 
-func cond(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
+func cond(a [2]int64, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
 	re, t, err := parseRegexp(t)
 	if err != nil {
 		return nil, "", err
@@ -552,7 +548,7 @@ func cond(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, strin
 	return ds, t, err
 }
 
-func loop(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
+func loop(a [2]int64, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
 	re, t, err := parseRegexp(t)
 	if err != nil {
 		return nil, "", err
@@ -572,9 +568,9 @@ func loop(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, strin
 		} else {
 			a[0] = ms[1]
 		}
-		dot := Dot{ms[0], ms[1]}
+		dot := [2]int64{ms[0], ms[1]}
 		if op == 'y' {
-			dot = Dot{prev, ms[0]}
+			dot = [2]int64{prev, ms[0]}
 			prev = ms[1]
 		}
 		var ds Diffs
@@ -586,7 +582,7 @@ func loop(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, strin
 		}
 	}
 	if op == 'y' {
-		ds, err := Edit(Dot{prev, a[1]}, cmd, print, ro)
+		ds, err := Edit([2]int64{prev, a[1]}, cmd, print, ro)
 		if err != nil {
 			return nil, "", err
 		}
@@ -597,7 +593,7 @@ func loop(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, strin
 	return diffs, t, nil
 }
 
-func seq(a Dot, t string, print io.Writer, ro rope.Rope) (Diffs, string, error) {
+func seq(a [2]int64, t string, print io.Writer, ro rope.Rope) (Diffs, string, error) {
 	var diffs Diffs
 	at := int64(-1)
 	var adj int64
@@ -644,7 +640,7 @@ func appendAdjusted(at, adj int64, diffs, ds Diffs) (int64, int64, Diffs, error)
 	return at, adj, diffs, nil
 }
 
-func pipe(a Dot, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
+func pipe(a [2]int64, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, string, error) {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "/bin/sh"
@@ -733,18 +729,18 @@ func parseRegexp(t string) (*re1.Regexp, string, error) {
 	return re, t, err
 }
 
-func addr(dot *Dot, ro rope.Rope, t string) (Dot, string, error) {
+func addr(dot *[2]int64, ro rope.Rope, t string) ([2]int64, string, error) {
 	left, t, err := addr1(*dot, 0, false, ro, t)
 	if err != nil {
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	}
 	if left, t, err = addr2(*dot, left, ro, t); err != nil {
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	}
 	return addr3(dot, left, ro, t)
 }
 
-func addr3(dot *Dot, left Dot, ro rope.Rope, t0 string) (Dot, string, error) {
+func addr3(dot *[2]int64, left [2]int64, ro rope.Rope, t0 string) ([2]int64, string, error) {
 	r, t := next(trimSpaceLeft(t0))
 	switch {
 	case r == eof:
@@ -752,26 +748,26 @@ func addr3(dot *Dot, left Dot, ro rope.Rope, t0 string) (Dot, string, error) {
 	case r != ',' && r != ';':
 		return left, t0, nil
 	case left[0] < 0:
-		left = Dot{}
+		left = [2]int64{}
 	}
 	if r == ';' {
 		*dot = left
 	}
 	switch right, t, err := addr(dot, ro, t); {
 	case err != nil:
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	case right[0] < 0:
-		right = Dot{ro.Len(), ro.Len()}
+		right = [2]int64{ro.Len(), ro.Len()}
 		fallthrough
 	default:
 		if left[0] > right[1] {
-			return Dot{}, t, errors.New("address out of order")
+			return [2]int64{}, t, errors.New("address out of order")
 		}
-		return addr3(dot, Dot{left[0], right[1]}, ro, t)
+		return addr3(dot, [2]int64{left[0], right[1]}, ro, t)
 	}
 }
 
-func addr2(dot, left Dot, ro rope.Rope, t0 string) (Dot, string, error) {
+func addr2(dot, left [2]int64, ro rope.Rope, t0 string) ([2]int64, string, error) {
 	r, t := next(trimSpaceLeft(t0))
 	switch {
 	case r == eof:
@@ -790,10 +786,10 @@ func addr2(dot, left Dot, ro rope.Rope, t0 string) (Dot, string, error) {
 	}
 	switch right, t, err := addr1(dot, at, r == '-', ro, t); {
 	case err != nil:
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	case right[0] < 0:
 		if right, _, err = addr1(dot, at, r == '-', ro, "1"); err != nil {
-			return Dot{}, t, err
+			return [2]int64{}, t, err
 		}
 		fallthrough
 	default:
@@ -803,13 +799,13 @@ func addr2(dot, left Dot, ro rope.Rope, t0 string) (Dot, string, error) {
 
 const addr1First = ".'#0123456789/$"
 
-func addr1(dot Dot, at int64, rev bool, ro rope.Rope, t0 string) (Dot, string, error) {
+func addr1(dot [2]int64, at int64, rev bool, ro rope.Rope, t0 string) ([2]int64, string, error) {
 	t0 = trimSpaceLeft(t0)
 	switch r, t := next(t0); r {
 	case eof:
-		return Dot{-1, -1}, "", nil
+		return [2]int64{-1, -1}, "", nil
 	default:
-		return Dot{-1, -1}, t0, nil
+		return [2]int64{-1, -1}, t0, nil
 	case '.':
 		return dot, t, nil
 	case '#':
@@ -819,14 +815,14 @@ func addr1(dot Dot, at int64, rev bool, ro rope.Rope, t0 string) (Dot, string, e
 	case '/':
 		return regexpAddr(ro, at, rev, t)
 	case '$':
-		return Dot{ro.Len(), ro.Len()}, t, nil
+		return [2]int64{ro.Len(), ro.Len()}, t, nil
 	}
 }
 
-func runeAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error) {
+func runeAddr(ro rope.Rope, at int64, rev bool, t string) ([2]int64, string, error) {
 	nrunes, t, err := number(t)
 	if err != nil {
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	}
 	var r io.RuneReader
 	if rev {
@@ -840,23 +836,23 @@ func runeAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error) {
 	for nrunes > 0 {
 		_, w, err := r.ReadRune()
 		if err != nil {
-			return Dot{}, "", errors.New("address out of range")
+			return [2]int64{}, "", errors.New("address out of range")
 		}
 		nbytes += int64(w)
 		nrunes--
 	}
 	if rev {
-		return Dot{at - nbytes, at - nbytes}, t, nil
+		return [2]int64{at - nbytes, at - nbytes}, t, nil
 	}
-	return Dot{at + nbytes, at + nbytes}, t, nil
+	return [2]int64{at + nbytes, at + nbytes}, t, nil
 }
 
-func lineAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error) {
+func lineAddr(ro rope.Rope, at int64, rev bool, t string) ([2]int64, string, error) {
 	n, t, err := number(t)
 	if err != nil {
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	}
-	var dot Dot
+	var dot [2]int64
 	if rev {
 		r := rope.NewReverseReader(rope.Slice(ro, 0, at))
 		dot, err = lineReverse(r, at, n)
@@ -872,15 +868,15 @@ func lineAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error) {
 	return dot, t, err
 }
 
-func lineForward(in *rope.Reader, at int64, nlines int) (Dot, error) {
-	dot := Dot{at, at}
+func lineForward(in *rope.Reader, at int64, nlines int) ([2]int64, error) {
+	dot := [2]int64{at, at}
 	for nlines >= 0 {
 		b, err := in.ReadByte()
 		switch {
 		case err != nil && nlines == 0:
 			b = '\n'
 		case err != nil:
-			return Dot{}, errors.New("address out of range")
+			return [2]int64{}, errors.New("address out of range")
 		default:
 			at++
 		}
@@ -892,8 +888,8 @@ func lineForward(in *rope.Reader, at int64, nlines int) (Dot, error) {
 	return dot, nil
 }
 
-func lineReverse(in *rope.ReverseReader, at int64, nlines int) (Dot, error) {
-	dot := Dot{at, at}
+func lineReverse(in *rope.ReverseReader, at int64, nlines int) ([2]int64, error) {
+	dot := [2]int64{at, at}
 	for {
 		b, err := in.ReadByte()
 		switch {
@@ -901,9 +897,9 @@ func lineReverse(in *rope.ReverseReader, at int64, nlines int) (Dot, error) {
 			b = '\n'
 		case err != nil:
 			if nlines == 1 {
-				return Dot{}, nil
+				return [2]int64{}, nil
 			}
-			return Dot{}, errors.New("address out of range")
+			return [2]int64{}, errors.New("address out of range")
 		}
 		if b == '\n' {
 			dot[0], dot[1] = at, dot[0]
@@ -915,10 +911,10 @@ func lineReverse(in *rope.ReverseReader, at int64, nlines int) (Dot, error) {
 	}
 }
 
-func regexpAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error) {
+func regexpAddr(ro rope.Rope, at int64, rev bool, t string) ([2]int64, string, error) {
 	re, t, err := re1.New(t, re1.Opts{Delimiter: '/', Reverse: rev})
 	if err != nil {
-		return Dot{}, "", err
+		return [2]int64{}, "", err
 	}
 	var ms []int64
 	if rev {
@@ -933,9 +929,9 @@ func regexpAddr(ro rope.Rope, at int64, rev bool, t string) (Dot, string, error)
 		}
 	}
 	if ms == nil {
-		return Dot{}, t, errors.New("no match")
+		return [2]int64{}, t, errors.New("no match")
 	}
-	return Dot{ms[0], ms[1]}, t, err
+	return [2]int64{ms[0], ms[1]}, t, err
 }
 
 const eof = -1

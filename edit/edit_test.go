@@ -11,177 +11,177 @@ import (
 func TestDiffs_Update(t *testing.T) {
 	tests := []struct {
 		name  string
-		dot   Dot
+		dot   [2]int64
 		diffs Diffs
-		want  Dot
+		want  [2]int64
 	}{
 		{
 			name:  "no diff",
-			dot:   Dot{5, 10},
+			dot:   [2]int64{5, 10},
 			diffs: Diffs{},
-			want:  Dot{5, 10},
+			want:  [2]int64{5, 10},
 		},
 		{
 			name:  "delete after dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{11, 15}, Text: nil}},
-			want:  Dot{5, 10},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{11, 15}, Text: nil}},
+			want:  [2]int64{5, 10},
 		},
 		{
 			name:  "add after dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{11, 11}, Text: rope.New("Hello")}},
-			want:  Dot{5, 10},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{11, 11}, Text: rope.New("Hello")}},
+			want:  [2]int64{5, 10},
 		},
 		{
 			name:  "grow after dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{11, 12}, Text: rope.New("123")}},
-			want:  Dot{5, 10},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{11, 12}, Text: rope.New("123")}},
+			want:  [2]int64{5, 10},
 		},
 		{
 			name:  "shrink after dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{11, 100}, Text: rope.New("123")}},
-			want:  Dot{5, 10},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{11, 100}, Text: rope.New("123")}},
+			want:  [2]int64{5, 10},
 		},
 		{
 			name:  "delete before dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{0, 3}, Text: nil}},
-			want:  Dot{2, 7},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{0, 3}, Text: nil}},
+			want:  [2]int64{2, 7},
 		},
 		{
 			name:  "add before dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{0, 0}, Text: rope.New("xyz")}},
-			want:  Dot{8, 13},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{0, 0}, Text: rope.New("xyz")}},
+			want:  [2]int64{8, 13},
 		},
 		{
 			name: "grow before dot",
-			dot:  Dot{5, 10},
+			dot:  [2]int64{5, 10},
 			// change from 1 → 3
-			diffs: Diffs{{At: Dot{0, 1}, Text: rope.New("123")}},
-			want:  Dot{7, 12},
+			diffs: Diffs{{At: [2]int64{0, 1}, Text: rope.New("123")}},
+			want:  [2]int64{7, 12},
 		},
 		{
 			name: "shrink before dot",
-			dot:  Dot{5, 10},
+			dot:  [2]int64{5, 10},
 			// change from 3 → 1
-			diffs: Diffs{{At: Dot{1, 4}, Text: rope.New("1")}},
-			want:  Dot{3, 8},
+			diffs: Diffs{{At: [2]int64{1, 4}, Text: rope.New("1")}},
+			want:  [2]int64{3, 8},
 		},
 		{
 			name:  "delete inside dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{6, 9}, Text: nil}},
-			want:  Dot{5, 7},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{6, 9}, Text: nil}},
+			want:  [2]int64{5, 7},
 		},
 		{
 			name:  "add inside dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{6, 6}, Text: rope.New("xyz")}},
-			want:  Dot{5, 13},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{6, 6}, Text: rope.New("xyz")}},
+			want:  [2]int64{5, 13},
 		},
 		{
 			name: "grow inside dot",
-			dot:  Dot{5, 10},
+			dot:  [2]int64{5, 10},
 			// change from 1 → 3
-			diffs: Diffs{{At: Dot{6, 7}, Text: rope.New("123")}},
-			want:  Dot{5, 12},
+			diffs: Diffs{{At: [2]int64{6, 7}, Text: rope.New("123")}},
+			want:  [2]int64{5, 12},
 		},
 		{
 			name: "shrink inside dot",
-			dot:  Dot{5, 10},
+			dot:  [2]int64{5, 10},
 			// change from 3 → 1
-			diffs: Diffs{{At: Dot{6, 9}, Text: rope.New("1")}},
-			want:  Dot{5, 8},
+			diffs: Diffs{{At: [2]int64{6, 9}, Text: rope.New("1")}},
+			want:  [2]int64{5, 8},
 		},
 		{
 			name:  "delete exactly dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{5, 10}, Text: nil}},
-			want:  Dot{5, 5},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{5, 10}, Text: nil}},
+			want:  [2]int64{5, 5},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "grow exactly dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{5, 10}, Text: rope.New("1234567890")}},
-			want:  Dot{5, 5},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{5, 10}, Text: rope.New("1234567890")}},
+			want:  [2]int64{5, 5},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "shrink exactly dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{5, 10}, Text: rope.New("1")}},
-			want:  Dot{5, 5},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{5, 10}, Text: rope.New("1")}},
+			want:  [2]int64{5, 5},
 		},
 		{
 			name:  "delete over all of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{0, 15}, Text: nil}},
-			want:  Dot{0, 0},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{0, 15}, Text: nil}},
+			want:  [2]int64{0, 0},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "grow over all of dot",
-			dot:   Dot{5, 6},
-			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1234567890")}},
-			want:  Dot{4, 4},
+			dot:   [2]int64{5, 6},
+			diffs: Diffs{{At: [2]int64{4, 7}, Text: rope.New("1234567890")}},
+			want:  [2]int64{4, 4},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "shrink over all of dot",
-			dot:   Dot{5, 6},
-			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1")}},
-			want:  Dot{4, 4},
+			dot:   [2]int64{5, 6},
+			diffs: Diffs{{At: [2]int64{4, 7}, Text: rope.New("1")}},
+			want:  [2]int64{4, 4},
 		},
 		{
 			name:  "delete over beginning of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{1, 7}, Text: nil}},
-			want:  Dot{1, 4},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{1, 7}, Text: nil}},
+			want:  [2]int64{1, 4},
 		},
 		{
 			// This deletes the beginning of dot and inserts before it.
 			name:  "grow over beginning of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1234567890")}},
-			want:  Dot{14, 17},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{4, 7}, Text: rope.New("1234567890")}},
+			want:  [2]int64{14, 17},
 		},
 		{
 			// This deletes the beginning of dot and inserts before it.
 			name:  "shrink over beginning of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1")}},
-			want:  Dot{5, 8},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{4, 7}, Text: rope.New("1")}},
+			want:  [2]int64{5, 8},
 		},
 		{
 			name:  "delete over end of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{8, 20}, Text: nil}},
-			want:  Dot{5, 8},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{8, 20}, Text: nil}},
+			want:  [2]int64{5, 8},
 		},
 		{
 			// This deletes the end of dot and inserts after it.
 			name:  "grow over end of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{8, 12}, Text: rope.New("1234567890")}},
-			want:  Dot{5, 8},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{8, 12}, Text: rope.New("1234567890")}},
+			want:  [2]int64{5, 8},
 		},
 		{
 			// This deletes the end of dot and inserts after it.
 			name:  "shrink over end of dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{8, 12}, Text: rope.New("1")}},
-			want:  Dot{5, 8},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{8, 12}, Text: rope.New("1")}},
+			want:  [2]int64{5, 8},
 		},
 		{
 			name:  "insert after dot",
-			dot:   Dot{5, 10},
-			diffs: Diffs{{At: Dot{10, 10}, Text: rope.New("☺")}},
-			want:  Dot{5, 10},
+			dot:   [2]int64{5, 10},
+			diffs: Diffs{{At: [2]int64{10, 10}, Text: rope.New("☺")}},
+			want:  [2]int64{5, 10},
 		},
 	}
 	for _, test := range tests {
@@ -357,7 +357,7 @@ func TestAddr(t *testing.T) {
 		{
 			name: "plus addr",
 			str:  "line1\nline2\nline3",
-			dot:  Dot{0, 1}, // l in line1
+			dot:  [2]int64{0, 1}, // l in line1
 			cases: []testCase{
 				{edit: ".", want: "l"}, // verify .
 
@@ -409,7 +409,7 @@ func TestAddr(t *testing.T) {
 		{
 			name: "insert plus",
 			str:  "line1\nline2\nline3",
-			dot:  Dot{0, 1}, // l in line1
+			dot:  [2]int64{0, 1}, // l in line1
 			cases: []testCase{
 				// Insert +.
 				{edit: "1 /line.*/", want: "line2"},
@@ -419,7 +419,7 @@ func TestAddr(t *testing.T) {
 		{
 			name: "minus addr",
 			str:  "line1\nline2\nline3",
-			dot:  Dot{15, 16}, // e in line3
+			dot:  [2]int64{15, 16}, // e in line3
 			cases: []testCase{
 				{edit: ".", want: "e"}, // verify .
 
@@ -474,7 +474,7 @@ func TestAddr(t *testing.T) {
 		{
 			name: "comma address",
 			str:  "line1\nline2\nline3",
-			dot:  Dot{0, 1}, // l in line1
+			dot:  [2]int64{0, 1}, // l in line1
 			cases: []testCase{
 				{edit: "$,$", want: ""},
 				{edit: "$,$+1", err: "address out of range"},
@@ -506,7 +506,7 @@ func TestAddr(t *testing.T) {
 		{
 			name: "semi-colon address",
 			str:  "line1\nline2\nline3",
-			dot:  Dot{0, 1}, // l in line1
+			dot:  [2]int64{0, 1}, // l in line1
 			cases: []testCase{
 				{edit: "$;$", want: ""},
 				{edit: "$;$+1", err: "address out of range"},
@@ -951,7 +951,7 @@ func TestEdit(t *testing.T) {
 type test struct {
 	name  string
 	str   string
-	dot   Dot
+	dot   [2]int64
 	cases []testCase
 }
 
