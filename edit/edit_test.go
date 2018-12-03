@@ -108,14 +108,14 @@ func TestDiffs_Update(t *testing.T) {
 			name:  "grow exactly dot",
 			dot:   Dot{5, 10},
 			diffs: Diffs{{At: Dot{5, 10}, Text: rope.New("1234567890")}},
-			want:  Dot{15, 15},
+			want:  Dot{5, 5},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "shrink exactly dot",
 			dot:   Dot{5, 10},
 			diffs: Diffs{{At: Dot{5, 10}, Text: rope.New("1")}},
-			want:  Dot{6, 6},
+			want:  Dot{5, 5},
 		},
 		{
 			name:  "delete over all of dot",
@@ -128,14 +128,14 @@ func TestDiffs_Update(t *testing.T) {
 			name:  "grow over all of dot",
 			dot:   Dot{5, 6},
 			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1234567890")}},
-			want:  Dot{14, 14},
+			want:  Dot{4, 4},
 		},
 		{
 			// This effectively deletes dot and inserts before it.
 			name:  "shrink over all of dot",
 			dot:   Dot{5, 6},
 			diffs: Diffs{{At: Dot{4, 7}, Text: rope.New("1")}},
-			want:  Dot{5, 5},
+			want:  Dot{4, 4},
 		},
 		{
 			name:  "delete over beginning of dot",
@@ -176,6 +176,12 @@ func TestDiffs_Update(t *testing.T) {
 			dot:   Dot{5, 10},
 			diffs: Diffs{{At: Dot{8, 12}, Text: rope.New("1")}},
 			want:  Dot{5, 8},
+		},
+		{
+			name:  "insert after dot",
+			dot:   Dot{5, 10},
+			diffs: Diffs{{At: Dot{10, 10}, Text: rope.New("☺")}},
+			want:  Dot{5, 10},
 		},
 	}
 	for _, test := range tests {

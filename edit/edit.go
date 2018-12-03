@@ -227,23 +227,33 @@ func (ds Diffs) Update(dot Dot) Dot {
 // For example, if the diff added or deleted text before the dot,
 // then dot is increased or decreased accordingly.
 func (d Diff) Update(dot Dot) Dot {
-	if dot[0] >= d.At[0] || d.At[1] > dot[1] {
-		if d.At[0] <= dot[0] && dot[0] < d.At[1] {
-			dot[0] = d.At[1]
-		}
-		if d.At[0] < dot[1] && dot[1] <= d.At[1] {
-			dot[1] = d.At[0]
-		}
-		if dot[0] > dot[1] {
-			dot[1] = dot[0]
-		}
-	}
-	delta := d.TextLen() - (d.At[1] - d.At[0])
-	if dot[0] >= d.At[1] {
+	switch delta := d.TextLen() - (d.At[1] - d.At[0]); {
+	case d.At[0] >= dot[1]:
+		// after dot
+		break
+
+	case d.At[1] <= dot[0]:
+		// before dot
 		dot[0] += delta
-	}
-	if dot[1] >= d.At[1] {
 		dot[1] += delta
+
+	case dot[0] <= d.At[0] && d.At[1] < dot[1]:
+		// inside dot
+		dot[1] += delta
+
+	case d.At[0] <= dot[0] && dot[1] < d.At[1]:
+		// over dot
+		dot[0] = d.At[0]
+		dot[1] = d.At[0]
+
+	case d.At[1] < dot[1]:
+		// a prefix of dot
+		dot[0] = d.At[0] + d.TextLen()
+		dot[1] = dot[0] + (dot[1] - d.At[1])
+
+	default:
+		// a suffix of dot
+		dot[1] = d.At[0]
 	}
 	return dot
 }
