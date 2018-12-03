@@ -24,7 +24,13 @@ echo misspell
 misspell . > $o 2>&1 || fail
 
 echo gocyclo
-gocyclo -over 15 . || fail
+gocyclo -over 15 .\
+	| grep -v 'main Main text/main.go'\
+	> $o 2>&1
+e=$(mktemp tmp.XXXXXXXXXX)
+touch $e
+diff $o $e > /dev/null || { rm $e; fail; }
+rm $e
 
 echo go test
 go test -test.timeout=60s ./... > $o 2>&1 || fail
