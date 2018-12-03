@@ -173,6 +173,18 @@ var findTests = []findTest{
 			{str: `	`, want: []string{"	"}},
 		},
 	},
+	{
+		re: `\*`,
+		cases: []findTestCase{
+			{str: "***", want: []string{"*"}},
+		},
+	},
+	{
+		re: `[*]`,
+		cases: []findTestCase{
+			{str: "***", want: []string{"*"}},
+		},
+	},
 }
 
 func TestFind(t *testing.T) {
