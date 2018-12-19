@@ -880,15 +880,15 @@ func TestPageUp(t *testing.T) {
 	text := rope.New(lines500)
 	b := NewBox(testStyles, testSize)
 	b.SetText(text)
-	b.at = int64(2.5 * float64(b.page))
+	b.at = int64(2.5 * float64(pageSize(b)))
 
 	b.HandleDir(0, -5)
-	if want := int64(1.5 * float64(b.page)); b.at != want {
+	if want := int64(1.5 * float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageUp, at=%d, wanted %d", b.at, want)
 	}
 
 	b.HandleDir(0, -5)
-	if want := int64(0.5 * float64(b.page)); b.at != want {
+	if want := int64(0.5 * float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageUp PageUp, at=%d, wanted %d", b.at, want)
 	}
 
@@ -902,15 +902,15 @@ func TestPageDown(t *testing.T) {
 	text := rope.New(lines500)
 	b := NewBox(testStyles, testSize)
 	b.SetText(text)
-	b.at = text.Len() - int64(2.5*float64(b.page))
+	b.at = text.Len() - int64(2.5*float64(pageSize(b)))
 
 	b.HandleDir(0, +5)
-	if want := text.Len() - int64(1.5*float64(b.page)); b.at != want {
+	if want := text.Len() - int64(1.5*float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageDown, at=%d, wanted %d", b.at, want)
 	}
 
 	b.HandleDir(0, +5)
-	if want := text.Len() - int64(0.5*float64(b.page)); b.at != want {
+	if want := text.Len() - int64(0.5*float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageDown PageDown, at=%d, wanted %d", b.at, want)
 	}
 
@@ -944,14 +944,14 @@ func TestEnd(t *testing.T) {
 	b.SetText(text)
 	b.at = text.Len()
 
-	end := text.Len() - int64(b.page)
+	end := text.Len() - int64(pageSize(b))
 	b.HandleDir(0, math.MaxInt16)
-	if b.at != text.Len()-int64(b.page) {
+	if b.at != text.Len()-int64(pageSize(b)) {
 		t.Fatalf("End, at=%d, wanted %d", b.at, end)
 	}
 
 	b.HandleDir(0, math.MaxInt16)
-	if b.at != text.Len()-int64(b.page) {
+	if b.at != text.Len()-int64(pageSize(b)) {
 		t.Errorf("End End, at=%d, wanted %d", b.at, end)
 	}
 }

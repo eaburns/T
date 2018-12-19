@@ -28,7 +28,6 @@ import (
 
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
-	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -62,7 +61,6 @@ type Box struct {
 	wheelTime      time.Time       // time when we will consider the next wheel
 
 	styles      [4]Style    // default, click 1, click 2, and click 3 styles
-	page        int         // number of lines on a 'page' for scrolling
 	dot         Highlight   // cursor selection
 	highlight   []Highlight // highlighted words
 	syntax      []Highlight // syntax highlighting
@@ -96,7 +94,6 @@ func NewBox(styles [4]Style, size image.Point) *Box {
 		size:      size,
 		text:      rope.Empty(),
 		styles:    styles,
-		page:      pageScrollLines(styles[0].Face, size.Y),
 		cursorCol: -1,
 		now:       func() time.Time { return time.Now() },
 	}
@@ -215,15 +212,6 @@ func (b *Box) HandleTick() bool {
 		}
 	}
 	return redraw
-}
-
-func pageScrollLines(face font.Face, H int) int {
-	m := face.Metrics()
-	h := (m.Height + m.Descent).Floor()
-	if h == 0 {
-		return 1
-	}
-	return H / (4 * h)
 }
 
 // HandleMove handles the event of the mouse cursor moving to a point
@@ -465,13 +453,22 @@ func (b *Box) HandleDir(x, y int) bool {
 	case y == math.MaxInt16:
 		showAddr(b, b.text.Len())
 	case y < 0:
-		scrollUp(b, b.page)
+		scrollUp(b, pageSize(b))
 	case y > 0:
-		scrollDown(b, b.page)
+		scrollDown(b, pageSize(b))
 	default:
 		return false
 	}
 	return true
+}
+
+func pageSize(b *Box) int {
+	m := b.styles[0].Face.Metrics()
+	h := (m.Height + m.Descent).Floor()
+	if h == 0 {
+		return 1
+	}
+	return b.size.Y / (4 * h)
 }
 
 func leftRight(b *Box, dir string) int64 {
@@ -865,7 +862,7 @@ func showAddr(b *Box, at int64) {
 	// TODO: This shows the start of the line containing the addr.
 	// If it's a multi-line text line, then we may need to scroll forward
 	// in order to see the address.
-	scrollUp(b, b.page)
+	scrollUp(b, pageSize(b))
 	dirtyLines(b)
 }
 
