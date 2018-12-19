@@ -173,6 +173,9 @@ func (b *Box) HandleFocus(focus bool) {
 	dirtyDot(b)
 	if focus {
 		b.blinkTime = b.now().Add(blinkDuration)
+	} else {
+		b.mods = [4]bool{}
+		b.button = 0
 	}
 }
 
@@ -259,6 +262,7 @@ func (b *Box) HandleWheel(x, y int) bool {
 // A positive value indicates the button was pressed.
 // A negative value indicates the button was released.
 func (b *Box) HandleClick(pt image.Point, button int) bool {
+	b.pt = pt
 	defer func() { b.button += button }()
 	if button <= 0 {
 		return false
