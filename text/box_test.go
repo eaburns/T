@@ -1181,6 +1181,7 @@ func TestDraw(t *testing.T) {
 
 func TestDrawEmptyText(t *testing.T) {
 	b := NewBox(testStyles, testSize)
+	b.HandleFocus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
@@ -1189,6 +1190,7 @@ func TestDrawEmptyText(t *testing.T) {
 func TestDrawCursorMidLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello"))
+	b.HandleFocus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{1, 1}
 	b.Draw(true, img)
@@ -1198,6 +1200,7 @@ func TestDrawCursorMidLine(t *testing.T) {
 func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello"))
+	b.HandleFocus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{5, 5}
 	b.Draw(true, img)
@@ -1207,6 +1210,7 @@ func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello\n"))
+	b.HandleFocus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{6, 6}
 	b.Draw(true, img)

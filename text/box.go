@@ -93,13 +93,12 @@ type span struct {
 // 	3: 3-click selection style
 func NewBox(styles [4]Style, size image.Point) *Box {
 	b := &Box{
-		size:       size,
-		text:       rope.Empty(),
-		showCursor: true,
-		styles:     styles,
-		page:       pageScrollLines(styles[0].Face, size.Y),
-		cursorCol:  -1,
-		now:        func() time.Time { return time.Now() },
+		size:      size,
+		text:      rope.Empty(),
+		styles:    styles,
+		page:      pageScrollLines(styles[0].Face, size.Y),
+		cursorCol: -1,
+		now:       func() time.Time { return time.Now() },
 	}
 	return b
 }
@@ -172,9 +171,10 @@ func (b *Box) HandleResize(size image.Point) {
 // HandleFocus handles a focus state change.
 func (b *Box) HandleFocus(focus bool) {
 	b.focus = focus
+	b.showCursor = focus
+	dirtyDot(b)
 	if focus {
 		b.blinkTime = b.now().Add(blinkDuration)
-		b.showCursor = true
 	}
 }
 
@@ -670,7 +670,9 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 	if b.text.Len() == 0 {
 		m := b.styles[0].Face.Metrics()
 		h := m.Height + m.Descent
-		drawCursor(b, img, 0, 0, h)
+		y := fixed.I(img.Bounds().Min.Y)
+		x := fixed.I(img.Bounds().Min.X)
+		drawCursor(b, img, x, y, y+h)
 		return
 	}
 	// Draw a cursor just after the last line of text.
@@ -684,7 +686,8 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 		lastRune(lastLine) == '\n' {
 		m := b.styles[0].Face.Metrics()
 		h := m.Height + m.Descent
-		drawCursor(b, img, 0, y, y+h)
+		x := fixed.I(img.Bounds().Min.X)
+		drawCursor(b, img, x, y, y+h)
 	}
 }
 
@@ -747,7 +750,7 @@ func drawGlyph(img draw.Image, style Style, pt fixed.Point26_6, r rune) fixed.In
 }
 
 func drawCursor(b *Box, img draw.Image, x, y0, y1 fixed.Int26_6) {
-	if b.focus && !b.showCursor {
+	if !b.showCursor {
 		return
 	}
 	r := image.Rect(x.Floor(), y0.Floor(), x.Floor()+4, y1.Floor())
