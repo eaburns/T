@@ -17,6 +17,7 @@ package text
 import (
 	"bufio"
 	"image"
+	"image/color"
 	"image/draw"
 	"io/ioutil"
 	"math"
@@ -637,13 +638,14 @@ func (b *Box) HandleRune(r rune) bool {
 
 // Draw draws the text box to the image with the upper-left of the box at 0,0.
 func (b *Box) Draw(dirty bool, img draw.Image) {
-	if dirty || img.Bounds().Size() != b.size {
-		b.size = img.Bounds().Size()
+	size := img.Bounds().Size()
+	if dirty || size != b.size {
+		b.size = size
 		dirtyLines(b)
 	}
 	at := b.at
 	lines := b.lines()
-	y := fixed.I(img.Bounds().Min.Y)
+	var y fixed.Int26_6
 	for i := range lines {
 		l := &lines[i]
 		if !l.dirty {
@@ -657,19 +659,15 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 		y += l.h
 		at = at1
 	}
-	if bounds := img.Bounds(); y.Floor() < bounds.Max.Y {
-		bg := image.NewUniform(b.styles[0].BG)
-		rect := image.Rect(0, y.Floor(), bounds.Max.X, bounds.Max.Y)
-		draw.Draw(img, rect, bg, image.ZP, draw.Src)
+	if y.Floor() < size.Y {
+		fillRect(img, b.styles[0].BG, image.Rect(0, y.Floor(), size.X, size.Y))
 	}
 
 	// Draw a cursor for empty text.
 	if b.text.Len() == 0 {
 		m := b.styles[0].Face.Metrics()
 		h := m.Height + m.Descent
-		y := fixed.I(img.Bounds().Min.Y)
-		x := fixed.I(img.Bounds().Min.X)
-		drawCursor(b, img, x, y, y+h)
+		drawCursor(b, img, 0, 0, h)
 		return
 	}
 	// Draw a cursor just after the last line of text.
@@ -683,64 +681,60 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 		lastRune(lastLine) == '\n' {
 		m := b.styles[0].Face.Metrics()
 		h := m.Height + m.Descent
-		x := fixed.I(img.Bounds().Min.X)
-		drawCursor(b, img, x, y, y+h)
+		drawCursor(b, img, 0, y, y+h)
 	}
 }
 
 func drawLine(b *Box, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
-	y1 := y0 + l.h
-	pt := fixed.Point26_6{X: fixed.I(img.Bounds().Min.X), Y: y0 + l.a}
 	var prevRune rune
+	var x0 fixed.Int26_6
+	yb, y1 := y0+l.a, y0+l.h
 	for i, s := range l.spans {
-		face := s.style.Face
-		bg := image.NewUniform(s.style.BG)
+		x1 := x0 + s.w
 
-		x0 := pt.X
-		x1 := pt.X + s.w
-		r := image.Rect(pt.X.Floor(), y0.Floor(), x1.Floor(), y1.Floor())
-		draw.Draw(img, r, bg, image.ZP, draw.Src)
+		bbox := image.Rect(x0.Floor(), y0.Floor(), x1.Floor(), y1.Floor())
+		fillRect(img, s.style.BG, bbox)
 
 		for _, r := range s.text {
 			if prevRune != 0 {
-				pt.X += face.Kern(prevRune, r)
+				x0 += s.style.Face.Kern(prevRune, r)
 			}
 			prevRune = r
 			var adv fixed.Int26_6
 			if r == '\t' || r == '\n' {
-				adv = advance(b, s.style, pt.X, r)
+				adv = advance(b, s.style, x0, r)
 			} else {
-				adv = drawGlyph(img, s.style, pt, r)
+				adv = drawGlyph(img, s.style, x0, yb, r)
 			}
 			if b.dot.At[0] == b.dot.At[1] && b.dot.At[0] == at {
-				drawCursor(b, img, pt.X, y0, y1)
+				drawCursor(b, img, x0, y0, y1)
 			}
-			pt.X += adv
+			x0 += adv
 			at += int64(utf8.RuneLen(r))
 		}
 		if i < len(l.spans)-1 && l.spans[i+1].style.Face != s.style.Face {
 			prevRune = 0
 		}
-		pt.X = x0 + s.w
 	}
-	if xmax := img.Bounds().Max.X; pt.X.Floor() < xmax {
-		bg := image.NewUniform(b.styles[0].BG)
-		r := image.Rect(pt.X.Floor(), y0.Floor(), xmax, y1.Floor())
-		draw.Draw(img, r, bg, image.ZP, draw.Src)
+	if xmax := img.Bounds().Size().X; x0.Floor() < xmax {
+		bbox := image.Rect(x0.Floor(), y0.Floor(), xmax, y1.Floor())
+		fillRect(img, b.styles[0].BG, bbox)
 	}
 	if b.dot.At[0] == b.dot.At[1] &&
 		at == b.dot.At[0] &&
 		at == b.text.Len() &&
 		prevRune != '\n' {
-		drawCursor(b, img, pt.X, y0, y1)
+		drawCursor(b, img, x0, y0, y1)
 	}
 }
 
-func drawGlyph(img draw.Image, style Style, pt fixed.Point26_6, r rune) fixed.Int26_6 {
+func drawGlyph(img draw.Image, style Style, x0, yb fixed.Int26_6, r rune) fixed.Int26_6 {
+	pt := fixed.Point26_6{X: x0, Y: yb}
 	dr, m, mp, adv, ok := style.Face.Glyph(pt, r)
 	if !ok {
 		dr, m, mp, adv, _ = style.Face.Glyph(pt, unicode.ReplacementChar)
 	}
+	dr = dr.Add(img.Bounds().Min)
 	fg := image.NewUniform(style.FG)
 	draw.DrawMask(img, dr, fg, image.ZP, m, mp, draw.Over)
 	return adv
@@ -751,8 +745,12 @@ func drawCursor(b *Box, img draw.Image, x, y0, y1 fixed.Int26_6) {
 		return
 	}
 	r := image.Rect(x.Floor(), y0.Floor(), x.Floor()+4, y1.Floor())
-	src := image.NewUniform(b.styles[0].FG)
-	draw.Draw(img, r, src, image.ZP, draw.Src)
+	fillRect(img, b.styles[0].FG, r)
+}
+
+func fillRect(img draw.Image, c color.Color, r image.Rectangle) {
+	z := img.Bounds().Min
+	draw.Draw(img, r.Add(z), image.NewUniform(c), image.ZP, draw.Src)
 }
 
 func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
