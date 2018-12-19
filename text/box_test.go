@@ -96,6 +96,24 @@ func match(re, str string) bool {
 	return regexp.MustCompile(re).MatchString(str)
 }
 
+func TestTextHeight(t *testing.T) {
+	const str = "Hello,\nWorld!"
+	b := NewBox(testStyles, testSize)
+	b.SetText(rope.New(str))
+	if h := b.TextHeight(); h != 2*H {
+		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 2*H)
+	}
+}
+
+func TestTextHeightTrailingNewline(t *testing.T) {
+	const str = "Hello,\nWorld!\n"
+	b := NewBox(testStyles, testSize)
+	b.SetText(rope.New(str))
+	if h := b.TextHeight(); h != 3*H {
+		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 3*H)
+	}
+}
+
 func TestClick1(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -101,6 +101,28 @@ func NewBox(styles [4]Style, size image.Point) *Box {
 	return b
 }
 
+// TextHeight returns the height of the displayed text.
+func (b *Box) TextHeight() int {
+	var y fixed.Int26_6
+	lines := b.lines()
+	for _, l := range lines {
+		y += l.h
+	}
+	if len(lines) > 0 {
+		l := &lines[len(lines)-1]
+		if len(l.spans) > 0 {
+			s := &l.spans[len(l.spans)-1]
+			r, _ := utf8.DecodeLastRuneInString(s.text)
+			if r == '\n' {
+				m := b.styles[0].Face.Metrics()
+				h := m.Height + m.Descent
+				y += h
+			}
+		}
+	}
+	return y.Ceil()
+}
+
 // SetText sets the text of the text box.
 // The text box always must be redrawn after setting the text.
 func (b *Box) SetText(text rope.Rope) {
