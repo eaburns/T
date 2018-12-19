@@ -10,6 +10,7 @@ env:
     - QUICK_TEST_SEED=0
 
 install:
+    - sudo apt-get install libegl1-mesa-dev libgles2-mesa-dev libx11-dev
     - go get github.com/golang/lint/golint
     - go get github.com/fzipp/gocyclo
     - go get github.com/gordonklaus/ineffassign
