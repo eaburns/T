@@ -94,6 +94,7 @@ type span struct {
 func NewBox(styles [4]Style, size image.Point) *Box {
 	b := &Box{
 		size:       size,
+		text:       rope.Empty(),
 		showCursor: true,
 		styles:     styles,
 		page:       pageScrollLines(styles[0].Face, size.Y),

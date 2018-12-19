@@ -1181,7 +1181,6 @@ func TestDraw(t *testing.T) {
 
 func TestDrawEmptyText(t *testing.T) {
 	b := NewBox(testStyles, testSize)
-	b.SetText(rope.New(""))
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
