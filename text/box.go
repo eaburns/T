@@ -782,6 +782,7 @@ func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
 		return at + l.n, image.Rect(0, y1.Floor(), 0, (y1 + h).Floor())
 	}
 
+	at0 := at
 	var s *span
 	var prevStyle Style
 	var prevRune rune
@@ -803,9 +804,8 @@ func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
 	}
 
 	if y1.Floor() <= pt.Y {
-		// The cursor is just beyond the end of the last line.
 		x := x0.Floor()
-		return at + l.n, image.Rect(x, y1.Floor(), x, (y1 + l.h).Floor())
+		return at0 + l.n, image.Rect(x, y1.Floor(), x, (y1 + l.h).Floor())
 	}
 
 	x1 = x0
@@ -834,6 +834,12 @@ func lastRune(l *line) rune {
 }
 
 func setDot(b *Box, start, end int64) {
+	if start < 0 || start > b.text.Len() {
+		panic("bad start")
+	}
+	if end < 0 || end > b.text.Len() {
+		panic("bad end")
+	}
 	dirtyDot(b)
 	b.dot.At[0] = start
 	b.dot.At[1] = end

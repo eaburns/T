@@ -1097,6 +1097,25 @@ func TestType(t *testing.T) {
 	}
 }
 
+// This is testing a bug where clicking below and to the right
+// of the last line of text  with >1 spans would cause dot to be set
+// out-of-bounds of the text.
+func TestClickAfterLastLineSelected(t *testing.T) {
+	const str = "Hello"
+	b := NewBox(testStyles, testSize)
+	b.SetText(rope.New(str))
+	b.syntax = []Highlight{
+		{At: [2]int64{0, 3}, Style: testStyle1},
+	}
+	b.HandleClick(image.Pt(10*A+A/2, 4*H+H/2), 1)
+
+	n := int64(len(str))
+	want := [2]int64{n, n}
+	if b.dot.At != want {
+		t.Errorf("dot=%v, wanted=%v\n", b.dot.At, want)
+	}
+}
+
 const text = `	"Jabberwocky"
 
 ’Twas brillig, and the slithy toves
