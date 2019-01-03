@@ -245,7 +245,7 @@ func TestClick1(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
-			b.HandleClick(test.pt, 1)
+			b.Click(test.pt, 1)
 			if b.dot.At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
 			}
@@ -428,8 +428,8 @@ func TestDrag1(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
-			b.HandleClick(test.pt[0], 1)
-			b.HandleMove(test.pt[1])
+			b.Click(test.pt[0], 1)
+			b.Move(test.pt[1])
 			if b.dot.At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
 			}
@@ -593,8 +593,8 @@ func TestDoubleClick1(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.now = fixedTime
-			b.HandleClick(test.pt, 1)
-			b.HandleClick(test.pt, 1)
+			b.Click(test.pt, 1)
+			b.Click(test.pt, 1)
 			if b.dot.At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
 			}
@@ -728,7 +728,7 @@ func TestDir1(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.dot.At = test.dot
-			b.HandleDir(test.x, test.y)
+			b.Dir(test.x, test.y)
 			if b.dot.At != test.wantDot {
 				t.Errorf("Dir(%d, %d) dot=%v, want %v\n",
 					test.x, test.y, b.dot, test.wantDot)
@@ -743,13 +743,13 @@ func TestUpPreservesColumn(t *testing.T) {
 	b.dot.At = [2]int64{8, 8}
 
 	// Column 3, up to a 1-column line.
-	b.HandleDir(0, -1)
+	b.Dir(0, -1)
 	if b.dot.At != [2]int64{5, 5} {
 		t.Fatalf("got %v, want 5,5", b.dot.At)
 	}
 
 	// Then up to another 3-column line.
-	b.HandleDir(0, -1)
+	b.Dir(0, -1)
 	if b.dot.At != [2]int64{2, 2} {
 		t.Errorf("got %v, want 2,2", b.dot.At)
 	}
@@ -761,13 +761,13 @@ func TestDownPreservesColumn(t *testing.T) {
 	b.dot.At = [2]int64{3, 3}
 
 	// Column 3, down to a 1-column line.
-	b.HandleDir(0, +1)
+	b.Dir(0, +1)
 	if b.dot.At != [2]int64{5, 5} {
 		t.Fatalf("got %v, want 5,5", b.dot.At)
 	}
 
 	// Then down to another 3-column line.
-	b.HandleDir(0, +1)
+	b.Dir(0, +1)
 	if b.dot.At != [2]int64{8, 8} {
 		t.Errorf("got %v, want 8,8", b.dot.At)
 	}
@@ -787,17 +787,17 @@ func TestWheelUp(t *testing.T) {
 	}
 	b.at = text.Len() - 2
 
-	b.HandleWheel(0, -1)
+	b.Wheel(0, -1)
 	if want := text.Len() - 1; b.at != want {
 		t.Fatalf("WheelUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleWheel(0, -1)
+	b.Wheel(0, -1)
 	if want := text.Len(); b.at != want {
 		t.Fatalf("WheelUp WheelUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleWheel(0, -1)
+	b.Wheel(0, -1)
 	if want := text.Len(); b.at != want {
 		t.Errorf("WheelUp WheelUp WheelUp, at=%d, wanted %d", b.at, want)
 	}
@@ -815,17 +815,17 @@ func TestWheelDown(t *testing.T) {
 	}
 	b.at = 2
 
-	b.HandleWheel(0, +1)
+	b.Wheel(0, +1)
 	if b.at != 1 {
 		t.Fatalf("WheelDown, at=%d, wanted 1", b.at)
 	}
 
-	b.HandleWheel(0, +1)
+	b.Wheel(0, +1)
 	if b.at != 0 {
 		t.Fatalf("WheelDown WheelDown, at=%d, wanted 0", b.at)
 	}
 
-	b.HandleWheel(0, +1)
+	b.Wheel(0, +1)
 	if b.at != 0 {
 		t.Errorf("WheelDown WheelDown WheelDown, at=%d, wanted 0", b.at)
 	}
@@ -842,21 +842,21 @@ func TestDragScrollUp(t *testing.T) {
 		return n
 	}
 	b.at = 2
-	b.HandleFocus(true)
-	b.HandleClick(image.Pt(A/2, H/2), 1)
-	b.HandleMove(image.Pt(A/2, -H))
+	b.Focus(true)
+	b.Click(image.Pt(A/2, H/2), 1)
+	b.Move(image.Pt(A/2, -H))
 
-	b.HandleTick()
+	b.Tick()
 	if want := 1; b.at != int64(want) {
 		t.Fatalf("Tick 1, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleTick()
+	b.Tick()
 	if want := 0; b.at != int64(want) {
 		t.Fatalf("Tick 2, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleTick()
+	b.Tick()
 	if want := 0; b.at != int64(want) {
 		t.Fatalf("Tick 3, at=%d, wanted %d", b.at, want)
 	}
@@ -874,21 +874,21 @@ func TestDragScrollDown(t *testing.T) {
 	}
 	at := text.Len() - int64(b.size.Y/H)
 	b.at = at - 2
-	b.HandleFocus(true)
-	b.HandleClick(image.Pt(A/2, b.size.Y-H/2), 1)
-	b.HandleMove(image.Pt(A/2, b.size.Y+H))
+	b.Focus(true)
+	b.Click(image.Pt(A/2, b.size.Y-H/2), 1)
+	b.Move(image.Pt(A/2, b.size.Y+H))
 
-	b.HandleTick()
+	b.Tick()
 	if want := at - 1; b.at != int64(want) {
 		t.Fatalf("Tick 1, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleTick()
+	b.Tick()
 	if want := at; b.at != int64(want) {
 		t.Fatalf("Tick 2, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleTick()
+	b.Tick()
 	if want := at; b.at != int64(want) {
 		t.Fatalf("Tick 3, at=%d, wanted %d", b.at, want)
 	}
@@ -900,17 +900,17 @@ func TestPageUp(t *testing.T) {
 	b.SetText(text)
 	b.at = int64(2.5 * float64(pageSize(b)))
 
-	b.HandleDir(0, -5)
+	b.Dir(0, -5)
 	if want := int64(1.5 * float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleDir(0, -5)
+	b.Dir(0, -5)
 	if want := int64(0.5 * float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageUp PageUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleDir(0, -5)
+	b.Dir(0, -5)
 	if b.at != 0 {
 		t.Errorf("PageUp  PageUp PageUp, at=%d, wanted 0", b.at)
 	}
@@ -922,17 +922,17 @@ func TestPageDown(t *testing.T) {
 	b.SetText(text)
 	b.at = text.Len() - int64(2.5*float64(pageSize(b)))
 
-	b.HandleDir(0, +5)
+	b.Dir(0, +5)
 	if want := text.Len() - int64(1.5*float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageDown, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleDir(0, +5)
+	b.Dir(0, +5)
 	if want := text.Len() - int64(0.5*float64(pageSize(b))); b.at != want {
 		t.Fatalf("PageDown PageDown, at=%d, wanted %d", b.at, want)
 	}
 
-	b.HandleDir(0, +5)
+	b.Dir(0, +5)
 	if b.at != text.Len() {
 		t.Errorf("PageDown PageDown PageDown, at=%d, wanted %d",
 			b.at, text.Len())
@@ -945,12 +945,12 @@ func TestHome(t *testing.T) {
 	b.SetText(text)
 	b.at = text.Len()
 
-	b.HandleDir(0, math.MinInt16)
+	b.Dir(0, math.MinInt16)
 	if b.at != 0 {
 		t.Fatalf("Home, at=%d, wanted 0", b.at)
 	}
 
-	b.HandleDir(0, math.MinInt16)
+	b.Dir(0, math.MinInt16)
 	if b.at != 0 {
 		t.Errorf("Home Home, at=%d, wanted 0", b.at)
 	}
@@ -963,12 +963,12 @@ func TestEnd(t *testing.T) {
 	b.at = text.Len()
 
 	end := text.Len() - int64(pageSize(b))
-	b.HandleDir(0, math.MaxInt16)
+	b.Dir(0, math.MaxInt16)
 	if b.at != text.Len()-int64(pageSize(b)) {
 		t.Fatalf("End, at=%d, wanted %d", b.at, end)
 	}
 
-	b.HandleDir(0, math.MaxInt16)
+	b.Dir(0, math.MaxInt16)
 	if b.at != text.Len()-int64(pageSize(b)) {
 		t.Errorf("End End, at=%d, wanted %d", b.at, end)
 	}
@@ -1102,7 +1102,7 @@ func TestType(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.dot.At = test.dot
-			b.HandleRune(test.r)
+			b.Rune(test.r)
 			if got := b.text.String(); got != test.want {
 				t.Errorf("(%q @ %v).Type(%q) text=%q, want %q",
 					test.in, test.dot, test.r, got, test.want)
@@ -1125,7 +1125,7 @@ func TestClickAfterLastLineSelected(t *testing.T) {
 	b.syntax = []Highlight{
 		{At: [2]int64{0, 3}, Style: testStyle1},
 	}
-	b.HandleClick(image.Pt(10*A+A/2, 4*H+H/2), 1)
+	b.Click(image.Pt(10*A+A/2, 4*H+H/2), 1)
 
 	n := int64(len(str))
 	want := [2]int64{n, n}
@@ -1199,7 +1199,7 @@ func TestDraw(t *testing.T) {
 
 func TestDrawEmptyText(t *testing.T) {
 	b := NewBox(testStyles, testSize)
-	b.HandleFocus(true)
+	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
@@ -1208,7 +1208,7 @@ func TestDrawEmptyText(t *testing.T) {
 func TestDrawCursorMidLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello"))
-	b.HandleFocus(true)
+	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{1, 1}
 	b.Draw(true, img)
@@ -1218,7 +1218,7 @@ func TestDrawCursorMidLine(t *testing.T) {
 func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello"))
-	b.HandleFocus(true)
+	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{5, 5}
 	b.Draw(true, img)
@@ -1228,7 +1228,7 @@ func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("Hello\n"))
-	b.HandleFocus(true)
+	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.dot.At = [2]int64{6, 6}
 	b.Draw(true, img)
@@ -1245,8 +1245,8 @@ func TestCursorBlink(t *testing.T) {
 		now = now.Add(blinkDuration)
 		return n
 	}
-	b.HandleFocus(true)
-	b.HandleTick()
+	b.Focus(true)
+	b.Tick()
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
