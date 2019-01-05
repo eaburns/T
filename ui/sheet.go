@@ -91,16 +91,6 @@ func fillRect(img draw.Image, c color.Color, r image.Rectangle) {
 	draw.Draw(img, r, image.NewUniform(c), image.ZP, draw.Src)
 }
 
-func strokeRect(img draw.Image, c color.Color, w int, r image.Rectangle) {
-	top := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Min.Y+w)
-	left := image.Rect(r.Min.X, r.Min.Y, r.Min.X+w, r.Max.Y)
-	right := image.Rect(r.Max.X-w, r.Min.Y, r.Max.X, r.Max.Y)
-	bottom := image.Rect(r.Min.X, r.Max.Y-w, r.Max.X, r.Max.Y)
-	for _, r := range [...]image.Rectangle{top, left, right, bottom} {
-		fillRect(img, c, r)
-	}
-}
-
 // Resize handles resize events.
 func (s *Sheet) Resize(size image.Point) {
 	s.size = size

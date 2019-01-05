@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// padPt is the point-width of padding between columns and rows.
-	padPt = 2
+	// padPt is the point-width of padding around rows.
+	padPt = 1
 
 	// minColPt is the minimum points in width of a column on resize.
 	minColPt = 10

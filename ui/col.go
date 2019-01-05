@@ -12,9 +12,9 @@ import (
 // A Col is a column of sheets.
 type Col struct {
 	win        *Win
-	padPx      int
-	lineHeight int
 	size       image.Point
+	lineHeight int
+	minHeight  int
 	rows       []Elem
 	heights    []float64 // frac of height
 	resizing   int       // row index being resized or -1
@@ -23,11 +23,11 @@ type Col struct {
 
 // NewCol returns a new column.
 // TODO: NewCol is just a temporary implementation.
-func NewCol(w *Win, dpi float32) *Col {
+func NewCol(w *Win) *Col {
 	var (
 		face = truetype.NewFace(font, &truetype.Options{
 			Size: float64(fontPt),
-			DPI:  float64(dpi * (72.0 / 96.0)),
+			DPI:  float64(w.dpi * (72.0 / 96.0)),
 		})
 		bodyStyles = [...]text.Style{
 			{FG: fg, BG: colBG, Face: face},
@@ -38,10 +38,11 @@ func NewCol(w *Win, dpi float32) *Col {
 	)
 	bg := text.NewBox(bodyStyles, image.ZP)
 	bg.SetText(rope.New("Del Add\n"))
+	h := (face.Metrics().Height + face.Metrics().Descent).Ceil()
 	return &Col{
 		win:        w,
-		padPx:      int(dpi * padPt / 72.0),
-		lineHeight: (face.Metrics().Height + face.Metrics().Descent).Ceil(),
+		lineHeight: h,
+		minHeight:  h + 2*int(padPt*w.dpi/72.0+0.5),
 		rows:       []Elem{bg},
 		heights:    []float64{1.0},
 		resizing:   -1,
@@ -51,6 +52,7 @@ func NewCol(w *Win, dpi float32) *Col {
 
 // Add adds an element to the column.
 func (c *Col) Add(e Elem) {
+	e = newFrame(int(c.win.dpi*padPt/72.0), e)
 	switch n := len(c.rows); n {
 	case 0:
 		panic("impossible")
@@ -69,7 +71,7 @@ func (c *Col) Add(e Elem) {
 
 // HandleBounds returns the bounding box of the handle.
 func (c *Col) HandleBounds() image.Rectangle {
-	y1 := int(c.heights[0] * c.dy())
+	y1 := int(c.heights[0] * float64(c.size.Y))
 	if y1 > c.lineHeight {
 		y1 = c.lineHeight
 	}
@@ -86,8 +88,7 @@ func (c *Col) Draw(dirty bool, drawImage draw.Image) {
 	r := img.Bounds()
 	y0 := r.Min.Y
 	for i, o := range c.rows {
-		r.Max.Y = y0 + i*c.padPx + int(c.heights[i]*c.dy())
-
+		r.Max.Y = y0 + int(c.heights[i]*float64(c.size.Y))
 		if i == 0 {
 			r0 := r
 			r0.Max.X = drawColHandle(c, img)
@@ -95,10 +96,6 @@ func (c *Col) Draw(dirty bool, drawImage draw.Image) {
 		} else {
 			o.Draw(dirty, img.SubImage(r).(*image.RGBA))
 		}
-
-		r.Min.Y = r.Max.Y
-		r.Max.Y += c.padPx
-		fillRect(img, colBG, r)
 		r.Min.Y = r.Max.Y
 	}
 }
@@ -107,7 +104,7 @@ func drawColHandle(c *Col, img *image.RGBA) int {
 	const pad = 6
 	handle := c.HandleBounds().Add(img.Bounds().Min)
 	r := handle
-	r.Max.Y = r.Min.Y + int(c.heights[0]*c.dy())
+	r.Max.Y = r.Min.Y + int(c.heights[0]*float64(c.size.Y))
 	fillRect(img, colBG, r)
 	fillRect(img, tagBG, handle.Inset(pad))
 	return r.Min.X
@@ -116,11 +113,11 @@ func drawColHandle(c *Col, img *image.RGBA) int {
 // Resize handles resize events.
 func (c *Col) Resize(size image.Point) {
 	// Preserve the height of the column background in pixels, not percent.
-	h0 := float64(c.heights[0] * c.dy())
+	h0 := float64(c.heights[0] * float64(c.size.Y))
 	c.size = size
-	c.heights[0] = clampFrac(h0 / c.dy())
+	c.heights[0] = clampFrac(h0 / float64(c.size.Y))
 
-	if nr := len(c.rows); size.Y < nr*(c.lineHeight+c.padPx)-c.padPx {
+	if nr := len(c.rows); size.Y < nr*c.minHeight {
 		// Too small to fit everything.
 		// Space out as much as we can,
 		// so if the window grows,
@@ -135,18 +132,17 @@ func (c *Col) Resize(size image.Point) {
 
 	var y0 int
 	for i, o := range c.rows {
-		y1 := i*c.padPx + int(c.heights[i]*c.dy())
+		y1 := int(c.heights[i] * float64(c.size.Y))
 		if i == 0 {
 			o.Resize(image.Pt(size.X-c.HandleBounds().Dx(), y1-y0))
 			y0 = y1
 			continue
 		}
-		if y1-y0 <= c.lineHeight+c.padPx {
+		if y1-y0 <= c.minHeight {
 			// The row got too small.
 			// Slide the next up to fit.
-			y := y0 + c.lineHeight + c.padPx
-			c.heights[i] = clampFrac(float64(y-i*c.padPx) / c.dy())
-			y1 = i*c.padPx + int(c.heights[i]*c.dy())
+			c.heights[i] = clampFrac(float64(y0+c.minHeight) / float64(c.size.Y))
+			y1 = int(c.heights[i] * float64(c.size.Y))
 		}
 		o.Resize(image.Pt(size.X, y1-y0))
 		y0 = y1
@@ -157,10 +153,10 @@ func (c *Col) Resize(size image.Point) {
 func (c *Col) Move(pt image.Point) bool {
 	if c.resizing >= 0 {
 		switch i := colIndex(c); {
-		case i > 0 && pt.X < c.lineHeight:
+		case i > 0 && pt.X < c.minHeight:
 			moveRow(c.win, c.resizing+1, c, c.win.cols[i-1], pt.Y)
 			return true
-		case i < len(c.win.cols)-1 && pt.X > c.size.X+c.lineHeight:
+		case i < len(c.win.cols)-1 && pt.X > c.size.X+c.minHeight:
 			moveRow(c.win, c.resizing+1, c, c.win.cols[i+1], pt.Y)
 			return true
 		default:
@@ -189,7 +185,7 @@ func moveRow(w *Win, ri int, src, dst *Col, y int) {
 	src.heights = append(src.heights[:ri-1], src.heights[ri:]...)
 
 	// Focus the dest column and add the row.
-	frac := clampFrac(float64(y) / dst.dy())
+	frac := clampFrac(float64(y) / float64(dst.size.Y))
 	for ri = range dst.heights {
 		if frac <= dst.heights[ri] {
 			break
@@ -215,11 +211,11 @@ func moveRow(w *Win, ri int, src, dst *Col, y int) {
 
 func resizeRow(c *Col, pt image.Point) bool {
 	// Try to center the mouse on line 1.
-	newY1 := pt.Y - c.lineHeight/2 - c.padPx
+	newY1 := pt.Y - c.minHeight/2
 
 	// Clamp to a multiple of line height.
-	clamp0 := c.lineHeight * (newY1 / c.lineHeight)
-	clamp1 := clamp0 + c.lineHeight
+	clamp0 := c.minHeight * (newY1 / c.minHeight)
+	clamp1 := clamp0 + c.minHeight
 	if newY1-clamp0 < clamp1-newY1 {
 		newY1 = clamp0
 	} else {
@@ -227,7 +223,7 @@ func resizeRow(c *Col, pt image.Point) bool {
 	}
 
 	// Clamp to the window.
-	dy := c.dy()
+	dy := float64(c.size.Y)
 	frac := clampFrac(float64(newY1) / dy)
 
 	// Disallow the above row from getting too small.
@@ -235,18 +231,17 @@ func resizeRow(c *Col, pt image.Point) bool {
 	if c.resizing > 0 {
 		y0 = int(c.heights[c.resizing-1] * dy)
 	}
-	if c.resizing > 0 && newY1-y0 < c.lineHeight {
-		frac = float64(y0+c.lineHeight) / dy
+	if c.resizing > 0 && newY1-y0 < c.minHeight {
+		frac = float64(y0+c.minHeight) / dy
 	}
 
 	// Disallow the below row from getting too small.
 	y2 := int(c.heights[c.resizing+1] * dy)
-	if y2-newY1 < c.lineHeight {
-		frac = float64(y2-c.lineHeight) / dy
+	if y2-newY1 < c.minHeight {
+		frac = float64(y2-c.minHeight) / dy
 	}
 
-	if newY1 < y0-(c.lineHeight+c.padPx) ||
-		newY1 > y2+c.lineHeight+c.padPx {
+	if newY1 < y0-c.minHeight || newY1 > y2+c.minHeight {
 		moveRow(c.win, c.resizing+1, c, c, pt.Y)
 		return true
 	}
@@ -279,7 +274,7 @@ func (c *Col) Click(pt image.Point, button int) bool {
 	if button == 1 {
 		for i := range c.rows[:len(c.rows)-1] {
 			r := c.rows[i+1]
-			y0 := i*c.padPx + int(c.heights[i]*c.dy())
+			y0 := int(c.heights[i] * float64(c.size.Y))
 			handler, ok := r.(interface{ HandleBounds() image.Rectangle })
 			if !ok {
 				continue
@@ -307,7 +302,7 @@ func y0(c *Col) int {
 		if o == c.Elem {
 			break
 		}
-		y0 = i*c.padPx + int(c.heights[i]*c.dy())
+		y0 = int(c.heights[i] * float64(c.size.Y))
 	}
 	return y0
 }
@@ -319,7 +314,7 @@ func setColFocus(c *Col, pt image.Point, button int) bool {
 	var i int
 	var o Elem
 	for i, o = range c.rows {
-		y1 := i*c.padPx + int(c.heights[i]*c.dy())
+		y1 := int(c.heights[i] * float64(c.size.Y))
 		if pt.Y < y1 {
 			break
 		}
@@ -331,8 +326,4 @@ func setColFocus(c *Col, pt image.Point, button int) bool {
 		return true
 	}
 	return false
-}
-
-func (c *Col) dy() float64 {
-	return float64(c.size.Y - (len(c.rows)-1)*c.padPx)
 }

@@ -10,9 +10,9 @@ import (
 
 // A Win is a window of columns of sheets.
 type Win struct {
-	padPx    int
-	minColPx int
+	dpi      float32
 	size     image.Point
+	minWidth int
 	cols     []*Col
 	widths   []float64 // frac of width
 	resizing int       // col index being resized or -1
@@ -23,15 +23,15 @@ type Win struct {
 // TODO: NewWin is just a temporary implementation.
 func NewWin(dpi float32, sheet *Sheet) *Win {
 	w := &Win{
-		padPx:    int(dpi * padPt / 72.0),
-		minColPx: int(dpi * minColPt / 72.0),
+		dpi:      dpi,
+		minWidth: int(dpi * minColPt / 72.0),
 		widths:   []float64{0.33, 0.66, 1.0},
 		resizing: -1,
 	}
 	w.cols = []*Col{
-		NewCol(w, dpi),
-		NewCol(w, dpi),
-		NewCol(w, dpi),
+		NewCol(w),
+		NewCol(w),
+		NewCol(w),
 	}
 	w.Elem = w.cols[0]
 	w.cols[0].Add(sheet)
@@ -50,17 +50,13 @@ func (w *Win) Draw(dirty bool, img draw.Image) {
 
 	r := img.Bounds()
 	x0 := r.Min.X
-	r.Max.X = x0 + w.padPx
+	r.Max.X = x0
 	fillRect(img, colBG, r)
 
 	r.Min.X = r.Max.X
 	for i, c := range w.cols {
-		r.Max.X = x0 + i*w.padPx + int(w.widths[i]*w.dx())
+		r.Max.X = x0 + int(w.widths[i]*float64(w.size.X))
 		c.Draw(dirty, img.(*image.RGBA).SubImage(r).(*image.RGBA))
-
-		r.Min.X = r.Max.X
-		r.Max.X += w.padPx
-		fillRect(img, colBG, r)
 		r.Min.X = r.Max.X
 	}
 }
@@ -68,9 +64,9 @@ func (w *Win) Draw(dirty bool, img draw.Image) {
 // Resize handles resize events.
 func (w *Win) Resize(size image.Point) {
 	w.size = size
-	x0 := w.padPx
+	var x0 int
 	for i, c := range w.cols {
-		x1 := i*w.padPx + int(w.widths[i]*w.dx())
+		x1 := int(w.widths[i] * float64(w.size.X))
 		c.Resize(image.Pt(x1-x0, w.size.Y))
 		x0 = x1
 	}
@@ -80,7 +76,7 @@ func (w *Win) Resize(size image.Point) {
 func (w *Win) Move(pt image.Point) bool {
 	if w.resizing >= 0 {
 		// Center the pointer horizontally on the handle.
-		x := pt.X + w.cols[w.resizing].HandleBounds().Dx()/2 - w.padPx
+		x := pt.X + w.cols[w.resizing].HandleBounds().Dx()/2
 		return resizeCol(w, x)
 	}
 
@@ -89,20 +85,20 @@ func (w *Win) Move(pt image.Point) bool {
 }
 
 func resizeCol(w *Win, x int) bool {
-	newFrac := float64(x) / w.dx()
+	newFrac := float64(x) / float64(w.size.X)
 
 	// Don't resize if either resized col would get too small.
 	var x0 int
 	if w.resizing > 0 {
-		x0 = int(w.widths[w.resizing-1] * w.dx())
+		x0 = int(w.widths[w.resizing-1] * float64(w.size.X))
 	}
-	newX1 := int(newFrac * w.dx())
-	if newX1-x0 < w.minColPx {
-		newFrac = float64(x0+w.minColPx) / w.dx()
+	newX1 := int(newFrac * float64(w.size.X))
+	if newX1-x0 < w.minWidth {
+		newFrac = float64(x0+w.minWidth) / float64(w.size.X)
 	}
-	x2 := int(w.widths[w.resizing+1] * w.dx())
-	if x2-newX1 < w.minColPx {
-		newFrac = float64(x2-w.minColPx) / w.dx()
+	x2 := int(w.widths[w.resizing+1] * float64(w.size.X))
+	if x2-newX1 < w.minWidth {
+		newFrac = float64(x2-w.minWidth) / float64(w.size.X)
 	}
 
 	if w.widths[w.resizing] == newFrac {
@@ -120,7 +116,7 @@ func (w *Win) Click(pt image.Point, button int) bool {
 		return false
 	}
 	if button == 1 {
-		x0 := w.padPx
+		var x0 int
 		for i, c := range w.cols[:len(w.cols)-1] {
 			handle := c.HandleBounds().Add(image.Pt(x0, 0))
 			if pt.In(handle) {
@@ -128,7 +124,7 @@ func (w *Win) Click(pt image.Point, button int) bool {
 				w.resizing = i
 				return false
 			}
-			x0 = i*w.padPx + int(w.widths[i]*w.dx())
+			x0 = int(w.widths[i] * float64(w.size.X))
 		}
 	}
 
@@ -141,12 +137,12 @@ func (w *Win) Click(pt image.Point, button int) bool {
 }
 
 func x0(w *Win) int {
-	x0 := w.padPx
+	var x0 int
 	for i, c := range w.cols {
 		if c == w.Elem {
 			break
 		}
-		x0 = i*w.padPx + int(w.widths[i]*w.dx())
+		x0 = int(w.widths[i] * float64(w.size.X))
 	}
 	return x0
 }
@@ -158,7 +154,7 @@ func setWinFocus(w *Win, pt image.Point, button int) bool {
 	var i int
 	var c *Col
 	for i, c = range w.cols {
-		x1 := i*w.padPx + int(w.widths[i]*w.dx())
+		x1 := int(w.widths[i] * float64(w.size.X))
 		if pt.X < x1 {
 			break
 		}
@@ -171,5 +167,3 @@ func setWinFocus(w *Win, pt image.Point, button int) bool {
 	}
 	return false
 }
-
-func (w *Win) dx() float64 { return float64(w.size.X - len(w.cols)*w.padPx) }
