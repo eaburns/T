@@ -6,7 +6,6 @@ import (
 
 	"github.com/eaburns/T/rope"
 	"github.com/eaburns/T/text"
-	"github.com/golang/freetype/truetype"
 )
 
 // A Col is a column of sheets.
@@ -25,12 +24,8 @@ type Col struct {
 // TODO: NewCol is just a temporary implementation.
 func NewCol(w *Win) *Col {
 	var (
-		face = truetype.NewFace(font, &truetype.Options{
-			Size: float64(fontPt),
-			DPI:  float64(w.dpi * (72.0 / 96.0)),
-		})
 		bodyStyles = [...]text.Style{
-			{FG: fg, BG: colBG, Face: face},
+			{FG: fg, BG: colBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
@@ -38,15 +33,13 @@ func NewCol(w *Win) *Col {
 	)
 	bg := text.NewBox(bodyStyles, image.ZP)
 	bg.SetText(rope.New("Del Add\n"))
-	h := (face.Metrics().Height + face.Metrics().Descent).Ceil()
 	return &Col{
-		win:        w,
-		lineHeight: h,
-		minHeight:  h + 2*int(padPt*w.dpi/72.0+0.5),
-		rows:       []Elem{bg},
-		heights:    []float64{1.0},
-		resizing:   -1,
-		Elem:       bg,
+		win:       w,
+		minHeight: w.lineHeight + 2*int(padPt*w.dpi/72.0+0.5),
+		rows:      []Elem{bg},
+		heights:   []float64{1.0},
+		resizing:  -1,
+		Elem:      bg,
 	}
 }
 

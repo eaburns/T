@@ -9,7 +9,6 @@ import (
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
 	"github.com/eaburns/T/text"
-	"github.com/golang/freetype/truetype"
 )
 
 // A Sheet is a tag and a body.
@@ -23,20 +22,16 @@ type Sheet struct {
 }
 
 // NewSheet returns a new sheet.
-func NewSheet(dpi float32, title string) *Sheet {
+func NewSheet(c *Col, title string) *Sheet {
 	var (
-		face = truetype.NewFace(font, &truetype.Options{
-			Size: float64(fontPt),
-			DPI:  float64(dpi * (72.0 / 96.0)),
-		})
 		tagStyles = [...]text.Style{
-			{FG: fg, BG: tagBG, Face: face},
+			{FG: fg, BG: tagBG, Face: c.win.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
 		bodyStyles = [...]text.Style{
-			{FG: fg, BG: bodyBG, Face: face},
+			{FG: fg, BG: bodyBG, Face: c.win.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
@@ -48,7 +43,7 @@ func NewSheet(dpi float32, title string) *Sheet {
 	s := &Sheet{
 		tag:     tag,
 		body:    body,
-		minTagH: (face.Metrics().Height + face.Metrics().Descent).Ceil(),
+		minTagH: c.win.lineHeight,
 		Elem:    body,
 	}
 	tag.SetSyntax(s)

@@ -14,11 +14,9 @@ import (
 	"github.com/eaburns/T/rope"
 	"github.com/eaburns/T/text"
 	"github.com/eaburns/T/ui"
-	"github.com/golang/freetype/truetype"
 	"golang.org/x/exp/shiny/driver/gldriver"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/gomedium"
 	"golang.org/x/image/math/f64"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -69,21 +67,7 @@ func newWindow(ctx context.Context, scr screen.Screen) *win {
 		size:   e.Size(),
 		Window: window,
 	}
-
-	sheet := ui.NewSheet(w.dpi, "demo")
-	fnt, err := truetype.Parse(gomedium.TTF)
-	if err != nil {
-		panic(err)
-	}
-	sheet.Body().SetSyntax(highlighter{
-		face: truetype.NewFace(fnt,
-			&truetype.Options{
-				Size: float64(11),
-				DPI:  float64(w.dpi * (72.0 / 96.0)),
-			}),
-	})
-	sheet.Body().SetText(rope.New(defaultText))
-	w.elem = ui.NewWin(w.dpi, sheet)
+	w.elem = ui.NewWin(w.dpi)
 	w.elem.Resize(w.size)
 
 	go tick(w)
@@ -393,41 +377,3 @@ func mustCompile(str string) *re1.Regexp {
 	}
 	return re
 }
-
-var defaultText = `// A concurrent prime sieve
-
-package main
-
-import "fmt"
-
-// Send the sequence 2, 3, 4, ... to channel 'ch'.
-func Generate(ch chan<- int) {
-	for i := 2; ; i++ {
-		ch <- i // Send 'i' to channel 'ch'.
-	}
-}
-
-// Copy the values from channel 'in' to channel 'out',
-// removing those divisible by 'prime'.
-func Filter(in <-chan int, out chan<- int, prime int) {
-	for {
-		i := <-in // Receive value from 'in'.
-		if i%prime != 0 {
-			out <- i // Send 'i' to 'out'.
-		}
-	}
-}
-
-// The prime sieve: Daisy-chain Filter processes.
-func main() {
-	ch := make(chan int) // Create a new channel.
-	go Generate(ch)      // Launch Generate goroutine.
-	for i := 0; i < 10; i++ {
-		prime := <-ch
-		fmt.Println(prime)
-		ch1 := make(chan int)
-		go Filter(ch, ch1, prime)
-		ch = ch1
-	}
-}
-`

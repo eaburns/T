@@ -4,41 +4,41 @@ import (
 	"image"
 	"image/draw"
 
-	"github.com/eaburns/T/rope"
-	"github.com/eaburns/T/text"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 )
 
 // A Win is a window of columns of sheets.
 type Win struct {
-	dpi      float32
-	size     image.Point
-	minWidth int
-	cols     []*Col
-	widths   []float64 // frac of width
-	resizing int       // col index being resized or -1
-	Elem               // focus
+	dpi        float32
+	face       font.Face // default font face
+	lineHeight int
+	size       image.Point
+	minWidth   int
+	cols       []*Col
+	widths     []float64 // frac of width
+	resizing   int       // col index being resized or -1
+	Elem                 // focus
 }
 
 // NewWin returns a new window.
 // TODO: NewWin is just a temporary implementation.
-func NewWin(dpi float32, sheet *Sheet) *Win {
+func NewWin(dpi float32) *Win {
+	face := truetype.NewFace(defaultFont, &truetype.Options{
+		Size: float64(defaultFontSize),
+		DPI:  float64(dpi * (72.0 / 96.0)),
+	})
+	h := (face.Metrics().Height + face.Metrics().Descent).Ceil()
 	w := &Win{
-		dpi:      dpi,
-		minWidth: int(dpi * minColPt / 72.0),
-		widths:   []float64{0.33, 0.66, 1.0},
-		resizing: -1,
+		dpi:        dpi,
+		face:       face,
+		lineHeight: h,
+		minWidth:   int(dpi * minColPt / 72.0),
+		resizing:   -1,
 	}
-	w.cols = []*Col{
-		NewCol(w),
-		NewCol(w),
-		NewCol(w),
-	}
+	w.cols = []*Col{NewCol(w)}
+	w.widths = []float64{1.0}
 	w.Elem = w.cols[0]
-	w.cols[0].Add(sheet)
-	w.cols[0].rows[0].(*text.Box).SetText(rope.New("Exit Del New"))
-	w.cols[1].Add(NewSheet(dpi, "sheet0"))
-	w.cols[1].Add(NewSheet(dpi, "sheet1"))
-	w.cols[2].Add(NewSheet(dpi, "sheet2"))
 	return w
 }
 

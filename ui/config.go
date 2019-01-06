@@ -16,11 +16,11 @@ const (
 )
 
 var (
-	// font is the default font.
-	font, _ = truetype.Parse(goregular.TTF)
+	// defaultFont is the default font.
+	defaultFont, _ = truetype.Parse(goregular.TTF)
 
-	// fontPt is the default font size in Postscript Points.
-	fontPt = 11
+	// defaultFontSize is the default font size in points.
+	defaultFontSize = 11
 
 	// fg is the text foreground color.
 	fg = color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF}
