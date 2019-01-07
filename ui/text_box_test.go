@@ -101,7 +101,7 @@ func TestTextHeight(t *testing.T) {
 	const str = "Hello,\nWorld!"
 	b := NewTextBox(testWin, testTextStyles, testSize)
 	b.SetText(rope.New(str))
-	if h := b.TextHeight(); h != 2*H {
+	if h := b.textHeight(); h != 2*H {
 		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 2*H)
 	}
 }
@@ -110,7 +110,7 @@ func TestTextHeightTrailingNewline(t *testing.T) {
 	const str = "Hello,\nWorld!\n"
 	b := NewTextBox(testWin, testTextStyles, testSize)
 	b.SetText(rope.New(str))
-	if h := b.TextHeight(); h != 3*H {
+	if h := b.textHeight(); h != 3*H {
 		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 3*H)
 	}
 }

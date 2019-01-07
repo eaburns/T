@@ -57,6 +57,13 @@ type TextBox struct {
 	now    func() time.Time
 }
 
+// Highlighter computes syntax highlighting when the text is changed.
+type Highlighter interface {
+	// Update returns the updated syntax highlighting,
+	// given the original highlighting, diffs, and the new text.
+	Update([]Highlight, edit.Diffs, rope.Rope) []Highlight
+}
+
 type line struct {
 	dirty bool
 	n     int64
@@ -94,8 +101,21 @@ func NewTextBox(w *Win, styles [4]TextStyle, size image.Point) *TextBox {
 	return b
 }
 
-// TextHeight returns the height of the displayed text.
-func (b *TextBox) TextHeight() int {
+// Text returns the current text of the text box.
+func (b *TextBox) Text() rope.Rope { return b.text }
+
+// SetText sets the text of the text box.
+// The text box always must be redrawn after setting the text.
+func (b *TextBox) SetText(text rope.Rope) {
+	b.text = text
+	if b.highlighter != nil {
+		b.syntax = b.highlighter.Update(nil, nil, b.text)
+	}
+	dirtyLines(b)
+}
+
+// textHeight returns the height of the displayed text.
+func (b *TextBox) textHeight() int {
 	var y fixed.Int26_6
 	lines := b.lines()
 	for _, l := range lines {
@@ -116,41 +136,7 @@ func (b *TextBox) TextHeight() int {
 	return y.Ceil()
 }
 
-// Text returns the current text of the text box.
-func (b *TextBox) Text() rope.Rope { return b.text }
-
-// SetText sets the text of the text box.
-// The text box always must be redrawn after setting the text.
-func (b *TextBox) SetText(text rope.Rope) {
-	b.text = text
-	if b.highlighter != nil {
-		b.syntax = b.highlighter.Update(nil, nil, b.text)
-	}
-	dirtyLines(b)
-}
-
-// Dot returns the ith dot.
-// The dots are numbered 1, 2, and 3.
-// They correspond to 1-, 2-, and 3-clicking.
-// If i is not 1, 2, or 3, then [2]int64{} is returned.
-func (b *TextBox) Dot(i int) [2]int64 {
-	if i < 1 || i >= len(b.dots) {
-		return [2]int64{}
-	}
-	return b.dots[i].At
-}
-
-// Highlighter computes syntax highlighting when the text is changed.
-type Highlighter interface {
-	// Update returns the updated syntax highlighting,
-	// given the original highlighting, diffs, and the new text.
-	Update([]Highlight, edit.Diffs, rope.Rope) []Highlight
-}
-
-// SetSyntax sets the current syntax highlighter and
-// re-computes the syntax highlighting.
-// The text box always must be redrawn after setting the syntax.
-func (b *TextBox) SetSyntax(highlighter Highlighter) {
+func (b *TextBox) setHighlighter(highlighter Highlighter) {
 	b.highlighter = highlighter
 	b.syntax = b.highlighter.Update(nil, nil, b.text)
 	dirtyLines(b)

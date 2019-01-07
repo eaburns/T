@@ -44,7 +44,7 @@ func NewSheet(w *Win, title string) *Sheet {
 		minTagH: w.lineHeight,
 		TextBox: body,
 	}
-	tag.SetSyntax(s)
+	tag.setHighlighter(s)
 	return s
 }
 
@@ -108,7 +108,7 @@ func resetTagHeight(s *Sheet, size image.Point) {
 	size.X -= s.minTagH // handle
 	s.tag.Resize(size)
 	s.tag.Dir(0, math.MinInt16)
-	if s.tagH = s.tag.TextHeight(); s.tagH < s.minTagH {
+	if s.tagH = s.tag.textHeight(); s.tagH < s.minTagH {
 		s.tagH = s.minTagH
 	}
 	s.tag.Resize(image.Pt(size.X, s.tagH))
