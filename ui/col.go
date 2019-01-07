@@ -9,14 +9,13 @@ import (
 
 // A Col is a column of sheets.
 type Col struct {
-	win        *Win
-	size       image.Point
-	lineHeight int
-	minHeight  int
-	rows       []Row
-	heights    []float64 // frac of height
-	resizing   int       // row index being resized or -1
-	Row                  // focus
+	win       *Win
+	size      image.Point
+	minHeight int
+	rows      []Row
+	heights   []float64 // frac of height
+	resizing  int       // row index being resized or -1
+	Row                 // focus
 }
 
 // NewCol returns a new column.
@@ -91,10 +90,10 @@ func (c *Col) Tick() bool {
 // HandleBounds returns the bounding box of the handle.
 func (c *Col) HandleBounds() image.Rectangle {
 	y1 := int(c.heights[0] * float64(c.size.Y))
-	if y1 > c.lineHeight {
-		y1 = c.lineHeight
+	if y1 > c.win.lineHeight {
+		y1 = c.win.lineHeight
 	}
-	return image.Rect(c.size.X-c.lineHeight, 0, c.size.X, y1)
+	return image.Rect(c.size.X-c.win.lineHeight, 0, c.size.X, y1)
 }
 
 // Draw draws the column.
