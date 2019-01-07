@@ -18,7 +18,7 @@ type Sheet struct {
 	body          *text.Box
 	tagH, minTagH int
 	size          image.Point
-	Elem          // the focus element: the tag or the body.
+	*text.Box     // the focus element: the tag or the body.
 }
 
 // NewSheet returns a new sheet.
@@ -44,7 +44,7 @@ func NewSheet(c *Col, title string) *Sheet {
 		tag:     tag,
 		body:    body,
 		minTagH: c.win.lineHeight,
-		Elem:    body,
+		Box:     body,
 	}
 	tag.SetSyntax(s)
 	return s
@@ -115,23 +115,24 @@ func resetTagHeight(s *Sheet, size image.Point) {
 
 // Move handles movement events.
 func (s *Sheet) Move(pt image.Point) bool {
-	if s.Elem == s.body {
+	if s.Box == s.body {
 		pt.Y -= s.tagH
 	}
-	return s.Elem.Move(pt)
+	return s.Box.Move(pt)
 }
 
 // Click handles click events.
-func (s *Sheet) Click(pt image.Point, button int) bool {
+func (s *Sheet) Click(pt image.Point, button int) ([2]int64, bool) {
 	var redraw bool
 	if button > 0 {
 		redraw = setSheetFocus(s, pt, button)
 	}
 
-	if s.Elem == s.body {
+	if s.Box == s.body {
 		pt.Y -= s.tagH
 	}
-	return s.Elem.Click(pt, button) || redraw
+	_, r := s.Box.Click(pt, button)
+	return [2]int64{}, r || redraw
 }
 
 func setSheetFocus(s *Sheet, pt image.Point, button int) bool {
@@ -139,15 +140,15 @@ func setSheetFocus(s *Sheet, pt image.Point, button int) bool {
 		return false
 	}
 	if pt.Y < s.tagH {
-		if s.Elem != s.tag {
-			s.Elem = s.tag
+		if s.Box != s.tag {
+			s.Box = s.tag
 			s.body.Focus(false)
 			s.tag.Focus(true)
 			return true
 		}
 	} else {
-		if s.Elem != s.body {
-			s.Elem = s.body
+		if s.Box != s.body {
+			s.Box = s.body
 			s.tag.Focus(false)
 			s.body.Focus(true)
 			return true

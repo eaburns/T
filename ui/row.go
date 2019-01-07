@@ -5,12 +5,12 @@ import (
 	"image/draw"
 )
 
-// The Elem interface is implemented by UI elements
-// that can draw and react to user input events.
+// The Row interface is implemented by UI elements
+// that sit in a column, draw, and react to user input events.
 //
-// All corrdinates below are relative to the element,
+// All corrdinates below are relative to the row,
 // with 0,0 in the upper left.
-type Elem interface {
+type Row interface {
 	// Draw draws the element to the image.
 	// If dirty is true the element should redraw itself in its entirity.
 	// If dirty is false, the element need only redraw
@@ -40,7 +40,7 @@ type Elem interface {
 	// The absolute value of the argument indicates the mouse button.
 	// A positive value indicates the button was pressed.
 	// A negative value indicates the button was released.
-	Click(pt image.Point, button int) bool
+	Click(pt image.Point, button int) ([2]int64, bool)
 
 	// Wheel handles mouse wheel events.
 	// It returns whether the element needs to be redrawn.

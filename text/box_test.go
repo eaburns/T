@@ -63,7 +63,7 @@ func TestEdit(t *testing.T) {
 	for _, test := range tests {
 		b := NewBox(testStyles, testSize)
 		b.SetText(rope.New(test.in))
-		b.dot.At = test.inDot
+		b.dots[1].At = test.inDot
 
 		switch _, err := b.Edit(test.ed); {
 		case test.err != "" && err != nil:
@@ -85,9 +85,9 @@ func TestEdit(t *testing.T) {
 					test.in, test.ed, got, test.want)
 			}
 		}
-		if b.dot.At != test.wantDot {
+		if b.dots[1].At != test.wantDot {
 			t.Errorf("(%q).Edit(%q), dot=%v, want %v",
-				test.in, test.ed, b.dot.At, test.wantDot)
+				test.in, test.ed, b.dots[1].At, test.wantDot)
 		}
 	}
 }
@@ -246,183 +246,184 @@ func TestClick1(t *testing.T) {
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
 			b.Click(test.pt, 1)
-			if b.dot.At != test.wantDot {
-				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
+			if b.dots[1].At != test.wantDot {
+				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
 			}
 		})
 	}
 }
 
+var dragTests = []struct {
+	name    string
+	in      string
+	hi      []Highlight
+	pt      [2]image.Point
+	wantDot [2]int64
+}{
+	{
+		name: "empty",
+		in:   "",
+		pt: [2]image.Point{
+			{A / 2, H / 2},
+			{A + A/2, H + H/2},
+		},
+		wantDot: [2]int64{0, 0},
+	},
+	{
+		name: "negative x",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{-1, 5},
+			{-2, 5},
+		},
+		wantDot: [2]int64{0, 0},
+	},
+	{
+		name: "negative y",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{5, -1},
+			{5, -2},
+		},
+		wantDot: [2]int64{0, 0},
+	},
+	{
+		name: "negative xy",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{-5, -1},
+			{-4, -2},
+		},
+		wantDot: [2]int64{0, 0},
+	},
+	{
+		name: "no move",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A + A/2, H / 2},
+			{A + A/2, H / 2},
+		},
+		wantDot: [2]int64{1, 1},
+	},
+	{
+		name: "move within rune",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A + A/2, H / 2},
+			{A + A/2 + A/4, H/2 + H/4},
+		},
+		wantDot: [2]int64{1, 1},
+	},
+	{
+		name: "select rune 0",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A / 2, H / 2},
+			{A + A/2, H / 2},
+		},
+		wantDot: [2]int64{0, 1},
+	},
+	{
+		name: "select rune 1",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A + A/2, H / 2},
+			{2*A + A/2, H / 2},
+		},
+		wantDot: [2]int64{1, 2},
+	},
+	{
+		name: "select last rune",
+		in:   "line1\nline2",
+		pt: [2]image.Point{
+			{5*A + A/2, H + H/2},
+			{6*A + A/2, H + H/2},
+		},
+		wantDot: [2]int64{11, 11},
+	},
+	{
+		// If we select beyond the end of the line,
+		// we don't select the newline, but  the rune before it.
+		name: "select beyond end of line",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A / 2, H / 2},
+			{12*A + A/2, H / 2}, // only 6 runes on this line.
+		},
+		wantDot: [2]int64{0, 5},
+	},
+	{
+		name: "select non-last newline",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A / 2, H / 2},
+			{0, H + H/2},
+		},
+		wantDot: [2]int64{0, 6},
+	},
+	{
+		name: "select last rune newline",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A / 2, H + H/2},
+			{0, 2*H + H/2},
+		},
+		wantDot: [2]int64{6, 12},
+	},
+	{
+		name: "select end of file",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{0, 2*H + H/2},
+			{A, 2*H + H/2},
+		},
+		wantDot: [2]int64{12, 12},
+	},
+	{
+		name: "whole file",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{0, 0},
+			{A, 2*H + H/2},
+		},
+		wantDot: [2]int64{0, 12},
+	},
+	{
+		name: "backwards",
+		in:   "line1\nline2\n",
+		pt: [2]image.Point{
+			{A, 2*H + H/2},
+			{0, 0},
+		},
+		wantDot: [2]int64{0, 12},
+	},
+	{
+		name: "with highlight",
+		in:   "line1\nline2\nline3",
+		hi: []Highlight{
+			{
+				At:    [2]int64{0, 4}, // "line" in line1
+				Style: testStyle2,
+			},
+			{
+				At:    [2]int64{6, 7}, // "l" in line2
+				Style: testStyle3,
+			},
+			{
+				At:    [2]int64{12, 16}, // "line" in line3
+				Style: testStyle4,
+			},
+		},
+		pt: [2]image.Point{
+			{A + A/2, H + H/2},     // line 1, col 1
+			{2*A + A/2, 2*H + H/2}, // line 2, col 3
+		},
+		wantDot: [2]int64{7, 14},
+	},
+}
+
 func TestDrag1(t *testing.T) {
-	tests := []struct {
-		name    string
-		in      string
-		hi      []Highlight
-		pt      [2]image.Point
-		wantDot [2]int64
-	}{
-		{
-			name: "empty",
-			in:   "",
-			pt: [2]image.Point{
-				{A / 2, H / 2},
-				{A + A/2, H + H/2},
-			},
-			wantDot: [2]int64{0, 0},
-		},
-		{
-			name: "negative x",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{-1, 5},
-				{-2, 5},
-			},
-			wantDot: [2]int64{0, 0},
-		},
-		{
-			name: "negative y",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{5, -1},
-				{5, -2},
-			},
-			wantDot: [2]int64{0, 0},
-		},
-		{
-			name: "negative xy",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{-5, -1},
-				{-4, -2},
-			},
-			wantDot: [2]int64{0, 0},
-		},
-		{
-			name: "no move",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A + A/2, H / 2},
-				{A + A/2, H / 2},
-			},
-			wantDot: [2]int64{1, 1},
-		},
-		{
-			name: "move within rune",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A + A/2, H / 2},
-				{A + A/2 + A/4, H/2 + H/4},
-			},
-			wantDot: [2]int64{1, 1},
-		},
-		{
-			name: "select rune 0",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A / 2, H / 2},
-				{A + A/2, H / 2},
-			},
-			wantDot: [2]int64{0, 1},
-		},
-		{
-			name: "select rune 1",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A + A/2, H / 2},
-				{2*A + A/2, H / 2},
-			},
-			wantDot: [2]int64{1, 2},
-		},
-		{
-			name: "select last rune",
-			in:   "line1\nline2",
-			pt: [2]image.Point{
-				{5*A + A/2, H + H/2},
-				{6*A + A/2, H + H/2},
-			},
-			wantDot: [2]int64{11, 11},
-		},
-		{
-			// If we select beyond the end of the line,
-			// we don't select the newline, but  the rune before it.
-			name: "select beyond end of line",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A / 2, H / 2},
-				{12*A + A/2, H / 2}, // only 6 runes on this line.
-			},
-			wantDot: [2]int64{0, 5},
-		},
-		{
-			name: "select non-last newline",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A / 2, H / 2},
-				{0, H + H/2},
-			},
-			wantDot: [2]int64{0, 6},
-		},
-		{
-			name: "select last rune newline",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A / 2, H + H/2},
-				{0, 2*H + H/2},
-			},
-			wantDot: [2]int64{6, 12},
-		},
-		{
-			name: "select end of file",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{0, 2*H + H/2},
-				{A, 2*H + H/2},
-			},
-			wantDot: [2]int64{12, 12},
-		},
-		{
-			name: "whole file",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{0, 0},
-				{A, 2*H + H/2},
-			},
-			wantDot: [2]int64{0, 12},
-		},
-		{
-			name: "backwards",
-			in:   "line1\nline2\n",
-			pt: [2]image.Point{
-				{A, 2*H + H/2},
-				{0, 0},
-			},
-			wantDot: [2]int64{0, 12},
-		},
-		{
-			name: "with highlight",
-			in:   "line1\nline2\nline3",
-			hi: []Highlight{
-				{
-					At:    [2]int64{0, 4}, // "line" in line1
-					Style: testStyle2,
-				},
-				{
-					At:    [2]int64{6, 7}, // "l" in line2
-					Style: testStyle3,
-				},
-				{
-					At:    [2]int64{12, 16}, // "line" in line3
-					Style: testStyle4,
-				},
-			},
-			pt: [2]image.Point{
-				{A + A/2, H + H/2},     // line 1, col 1
-				{2*A + A/2, 2*H + H/2}, // line 2, col 3
-			},
-			wantDot: [2]int64{7, 14},
-		},
-	}
-	for _, test := range tests {
+	for _, test := range dragTests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			b := NewBox(testStyles, testSize)
@@ -430,8 +431,30 @@ func TestDrag1(t *testing.T) {
 			b.highlight = test.hi
 			b.Click(test.pt[0], 1)
 			b.Move(test.pt[1])
-			if b.dot.At != test.wantDot {
-				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
+			if b.dots[1].At != test.wantDot {
+				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
+			}
+		})
+	}
+}
+
+func TestDrag2(t *testing.T) {
+	for _, test := range dragTests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			b := NewBox(testStyles, testSize)
+			b.SetText(rope.New(test.in))
+			b.highlight = test.hi
+			b.Click(test.pt[0], 2)
+			b.Move(test.pt[1])
+			if b.dots[2].At != test.wantDot {
+				t.Errorf("drag: got dot=%v, want dot=%v", b.dots[2].At, test.wantDot)
+			}
+
+			// Unclicking button > 1resets the selection back to 0,0.
+			b.Click(test.pt[1], -2)
+			if b.dots[2].At != [2]int64{} {
+				t.Errorf("unclick: got dot=%v, want dot={}", b.dots[2].At)
 			}
 		})
 	}
@@ -594,9 +617,10 @@ func TestDoubleClick1(t *testing.T) {
 			b.SetText(rope.New(test.in))
 			b.now = fixedTime
 			b.Click(test.pt, 1)
+			b.Click(test.pt, -1)
 			b.Click(test.pt, 1)
-			if b.dot.At != test.wantDot {
-				t.Errorf("got dot=%v, want dot=%v", b.dot.At, test.wantDot)
+			if b.dots[1].At != test.wantDot {
+				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
 			}
 		})
 	}
@@ -727,11 +751,11 @@ func TestDir1(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
-			b.dot.At = test.dot
+			b.dots[1].At = test.dot
 			b.Dir(test.x, test.y)
-			if b.dot.At != test.wantDot {
+			if b.dots[1].At != test.wantDot {
 				t.Errorf("Dir(%d, %d) dot=%v, want %v\n",
-					test.x, test.y, b.dot, test.wantDot)
+					test.x, test.y, b.dots[1], test.wantDot)
 			}
 		})
 	}
@@ -740,36 +764,36 @@ func TestDir1(t *testing.T) {
 func TestUpPreservesColumn(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("012\n4\n678"))
-	b.dot.At = [2]int64{8, 8}
+	b.dots[1].At = [2]int64{8, 8}
 
 	// Column 3, up to a 1-column line.
 	b.Dir(0, -1)
-	if b.dot.At != [2]int64{5, 5} {
-		t.Fatalf("got %v, want 5,5", b.dot.At)
+	if b.dots[1].At != [2]int64{5, 5} {
+		t.Fatalf("got %v, want 5,5", b.dots[1].At)
 	}
 
 	// Then up to another 3-column line.
 	b.Dir(0, -1)
-	if b.dot.At != [2]int64{2, 2} {
-		t.Errorf("got %v, want 2,2", b.dot.At)
+	if b.dots[1].At != [2]int64{2, 2} {
+		t.Errorf("got %v, want 2,2", b.dots[1].At)
 	}
 }
 
 func TestDownPreservesColumn(t *testing.T) {
 	b := NewBox(testStyles, testSize)
 	b.SetText(rope.New("012\n4\n678"))
-	b.dot.At = [2]int64{3, 3}
+	b.dots[1].At = [2]int64{3, 3}
 
 	// Column 3, down to a 1-column line.
 	b.Dir(0, +1)
-	if b.dot.At != [2]int64{5, 5} {
-		t.Fatalf("got %v, want 5,5", b.dot.At)
+	if b.dots[1].At != [2]int64{5, 5} {
+		t.Fatalf("got %v, want 5,5", b.dots[1].At)
 	}
 
 	// Then down to another 3-column line.
 	b.Dir(0, +1)
-	if b.dot.At != [2]int64{8, 8} {
-		t.Errorf("got %v, want 8,8", b.dot.At)
+	if b.dots[1].At != [2]int64{8, 8} {
+		t.Errorf("got %v, want 8,8", b.dots[1].At)
 	}
 }
 
@@ -1101,15 +1125,15 @@ func TestType(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			b := NewBox(testStyles, testSize)
 			b.SetText(rope.New(test.in))
-			b.dot.At = test.dot
+			b.dots[1].At = test.dot
 			b.Rune(test.r)
 			if got := b.text.String(); got != test.want {
 				t.Errorf("(%q @ %v).Type(%q) text=%q, want %q",
 					test.in, test.dot, test.r, got, test.want)
 			}
-			if b.dot.At != test.wantDot {
+			if b.dots[1].At != test.wantDot {
 				t.Errorf("(%q @ %v).Type(%q) dot=%v, want %v",
-					test.in, test.dot, test.r, b.dot.At, test.wantDot)
+					test.in, test.dot, test.r, b.dots[1].At, test.wantDot)
 			}
 		})
 	}
@@ -1129,8 +1153,8 @@ func TestClickAfterLastLineSelected(t *testing.T) {
 
 	n := int64(len(str))
 	want := [2]int64{n, n}
-	if b.dot.At != want {
-		t.Errorf("dot=%v, wanted=%v\n", b.dot.At, want)
+	if b.dots[1].At != want {
+		t.Errorf("dot=%v, wanted=%v\n", b.dots[1].At, want)
 	}
 }
 
@@ -1190,8 +1214,8 @@ func TestDraw(t *testing.T) {
 	styles := [4]Style{style, style1, style, style}
 	b := NewBox(styles, size)
 	b.SetText(rope.New(text))
-	b.dot.At = [2]int64{7, 12}
-	b.dot.Style = style1
+	b.dots[1].At = [2]int64{7, 12}
+	b.dots[1].Style = style1
 	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
@@ -1210,7 +1234,7 @@ func TestDrawCursorMidLine(t *testing.T) {
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
-	b.dot.At = [2]int64{1, 1}
+	b.dots[1].At = [2]int64{1, 1}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
@@ -1220,7 +1244,7 @@ func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
-	b.dot.At = [2]int64{5, 5}
+	b.dots[1].At = [2]int64{5, 5}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
@@ -1230,7 +1254,7 @@ func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
 	b.SetText(rope.New("Hello\n"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
-	b.dot.At = [2]int64{6, 6}
+	b.dots[1].At = [2]int64{6, 6}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }

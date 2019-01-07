@@ -6,9 +6,9 @@ import (
 	"image/draw"
 )
 
-func newFrame(px int, e Elem) Elem {
-	f := &frame{px: px, Elem: e}
-	if _, ok := f.Elem.(interface{ HandleBounds() image.Rectangle }); ok {
+func newFrame(px int, row Row) Row {
+	f := &frame{px: px, Row: row}
+	if _, ok := f.Row.(interface{ HandleBounds() image.Rectangle }); ok {
 		return &handleFrame{*f}
 	}
 	return f
@@ -16,7 +16,7 @@ func newFrame(px int, e Elem) Elem {
 
 type frame struct {
 	px int
-	Elem
+	Row
 }
 
 type handleFrame struct {
@@ -24,7 +24,7 @@ type handleFrame struct {
 }
 
 func (f *handleFrame) HandleBounds() image.Rectangle {
-	h := f.Elem.(interface{ HandleBounds() image.Rectangle })
+	h := f.Row.(interface{ HandleBounds() image.Rectangle })
 	return h.HandleBounds().Add(image.Pt(f.px, f.px))
 }
 
@@ -32,7 +32,7 @@ func (f *frame) Draw(dirty bool, drawImg draw.Image) {
 	img := drawImg.(*image.RGBA)
 	strokeRect(img, colBG, f.px, img.Bounds())
 	b := img.Bounds().Inset(f.px)
-	f.Elem.Draw(dirty, img.SubImage(b).(*image.RGBA))
+	f.Row.Draw(dirty, img.SubImage(b).(*image.RGBA))
 }
 
 func strokeRect(img draw.Image, c color.Color, w int, r image.Rectangle) {
@@ -46,14 +46,14 @@ func strokeRect(img draw.Image, c color.Color, w int, r image.Rectangle) {
 }
 
 func (f *frame) Resize(size image.Point) {
-	f.Elem.Resize(size.Sub(image.Pt(f.px, f.px)))
+	f.Row.Resize(size.Sub(image.Pt(f.px, f.px)))
 }
 
 // Move handles mouse movement events.
 func (f *frame) Move(pt image.Point) bool {
-	return f.Elem.Move(pt.Sub(image.Pt(f.px, f.px)))
+	return f.Row.Move(pt.Sub(image.Pt(f.px, f.px)))
 }
 
-func (f *frame) Click(pt image.Point, button int) bool {
-	return f.Elem.Click(pt.Sub(image.Pt(f.px, f.px)), button)
+func (f *frame) Click(pt image.Point, button int) ([2]int64, bool) {
+	return f.Row.Click(pt.Sub(image.Pt(f.px, f.px)), button)
 }

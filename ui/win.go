@@ -18,7 +18,7 @@ type Win struct {
 	cols       []*Col
 	widths     []float64 // frac of width
 	resizing   int       // col index being resized or -1
-	Elem                 // focus
+	*Col                 // focus
 }
 
 // NewWin returns a new window.
@@ -38,7 +38,7 @@ func NewWin(dpi float32) *Win {
 	}
 	w.cols = []*Col{NewCol(w)}
 	w.widths = []float64{1.0}
-	w.Elem = w.cols[0]
+	w.Col = w.cols[0]
 	return w
 }
 
@@ -81,7 +81,7 @@ func (w *Win) Move(pt image.Point) bool {
 	}
 
 	pt.X -= x0(w)
-	return w.Elem.Move(pt)
+	return w.Col.Move(pt)
 }
 
 func resizeCol(w *Win, x int) bool {
@@ -133,13 +133,13 @@ func (w *Win) Click(pt image.Point, button int) bool {
 		redraw = setWinFocus(w, pt, button)
 	}
 	pt.X -= x0(w)
-	return w.Elem.Click(pt, button) || redraw
+	return w.Col.Click(pt, button) || redraw
 }
 
 func x0(w *Win) int {
 	var x0 int
 	for i, c := range w.cols {
-		if c == w.Elem {
+		if c == w.Col {
 			break
 		}
 		x0 = int(w.widths[i] * float64(w.size.X))
@@ -159,10 +159,10 @@ func setWinFocus(w *Win, pt image.Point, button int) bool {
 			break
 		}
 	}
-	if w.Elem != c {
-		w.Elem.Focus(false)
+	if w.Col != c {
+		w.Col.Focus(false)
 		c.Focus(true)
-		w.Elem = c
+		w.Col = c
 		return true
 	}
 	return false

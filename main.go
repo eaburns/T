@@ -42,7 +42,7 @@ type win struct {
 	size image.Point
 	screen.Window
 
-	elem ui.Elem
+	win *ui.Win
 }
 
 func newWindow(ctx context.Context, scr screen.Screen) *win {
@@ -67,8 +67,8 @@ func newWindow(ctx context.Context, scr screen.Screen) *win {
 		size:   e.Size(),
 		Window: window,
 	}
-	w.elem = ui.NewWin(w.dpi)
-	w.elem.Resize(w.size)
+	w.win = ui.NewWin(w.dpi)
+	w.win.Resize(w.size)
 
 	go tick(w)
 	go poll(scr, w)
@@ -108,7 +108,7 @@ func poll(scr screen.Screen, w *win) {
 			return
 
 		case time.Time:
-			if w.elem.Tick() {
+			if w.win.Tick() {
 				w.Send(paint.Event{})
 			}
 
@@ -117,7 +117,7 @@ func poll(scr screen.Screen, w *win) {
 				w.cancel()
 				continue
 			}
-			w.elem.Focus(e.To == lifecycle.StageFocused)
+			w.win.Focus(e.To == lifecycle.StageFocused)
 
 		case size.Event:
 			if e.Size() == image.ZP {
@@ -125,7 +125,7 @@ func poll(scr screen.Screen, w *win) {
 				continue
 			}
 			w.size = e.Size()
-			w.elem.Resize(w.size)
+			w.win.Resize(w.size)
 			dirty = true
 			if b := tex.Bounds(); b.Dx() < w.size.X || b.Dy() < w.size.Y {
 				tex.Release()
@@ -136,7 +136,7 @@ func poll(scr screen.Screen, w *win) {
 		case paint.Event:
 			rect := image.Rectangle{Max: w.size}
 			img := buf.RGBA().SubImage(rect).(*image.RGBA)
-			w.elem.Draw(dirty, img)
+			w.win.Draw(dirty, img)
 			dirty = false
 			tex.Upload(image.ZP, buf, buf.Bounds())
 			w.Draw(f64.Aff3{
@@ -158,29 +158,29 @@ func mouseEvent(w *win, e mouse.Event) {
 	var redraw bool
 	switch pt := image.Pt(int(e.X), int(e.Y)); {
 	case e.Button == mouse.ButtonWheelUp:
-		redraw = w.elem.Wheel(0, 1)
+		redraw = w.win.Wheel(0, 1)
 
 	case e.Button == mouse.ButtonWheelDown:
-		redraw = w.elem.Wheel(0, -1)
+		redraw = w.win.Wheel(0, -1)
 
 	case e.Button == mouse.ButtonWheelLeft:
-		redraw = w.elem.Wheel(-1, 0)
+		redraw = w.win.Wheel(-1, 0)
 
 	case e.Button == mouse.ButtonWheelRight:
-		redraw = w.elem.Wheel(1, 0)
+		redraw = w.win.Wheel(1, 0)
 
 	case e.Direction == mouse.DirNone:
-		redraw = w.elem.Move(pt)
+		redraw = w.win.Move(pt)
 
 	case e.Direction == mouse.DirPress:
-		redraw = w.elem.Click(pt, int(e.Button))
+		redraw = w.win.Click(pt, int(e.Button))
 
 	case e.Direction == mouse.DirRelease:
-		redraw = w.elem.Click(pt, -int(e.Button))
+		redraw = w.win.Click(pt, -int(e.Button))
 
 	case e.Direction == mouse.DirStep:
-		redraw = w.elem.Click(pt, int(e.Button))
-		redraw = w.elem.Click(pt, -int(e.Button)) || redraw
+		redraw = w.win.Click(pt, int(e.Button))
+		redraw = w.win.Click(pt, -int(e.Button)) || redraw
 	}
 	if redraw {
 		w.Send(paint.Event{})
@@ -206,7 +206,7 @@ func keyEvent(w *win, mods [4]bool, e key.Event) [4]bool {
 	}
 	if e.Rune > 0 {
 		if e.Direction == key.DirPress {
-			if w.elem.Rune(e.Rune) {
+			if w.win.Rune(e.Rune) {
 				w.Send(paint.Event{})
 			}
 		}
@@ -231,28 +231,28 @@ func dirKey(w *win, e key.Event) {
 	var redraw bool
 	switch e.Code {
 	case key.CodeUpArrow:
-		redraw = w.elem.Dir(0, -1)
+		redraw = w.win.Dir(0, -1)
 
 	case key.CodeDownArrow:
-		redraw = w.elem.Dir(0, 1)
+		redraw = w.win.Dir(0, 1)
 
 	case key.CodeLeftArrow:
-		redraw = w.elem.Dir(-1, 0)
+		redraw = w.win.Dir(-1, 0)
 
 	case key.CodeRightArrow:
-		redraw = w.elem.Dir(1, 0)
+		redraw = w.win.Dir(1, 0)
 
 	case key.CodePageUp:
-		redraw = w.elem.Dir(0, -2)
+		redraw = w.win.Dir(0, -2)
 
 	case key.CodePageDown:
-		redraw = w.elem.Dir(0, 2)
+		redraw = w.win.Dir(0, 2)
 
 	case key.CodeHome:
-		redraw = w.elem.Dir(0, math.MinInt16)
+		redraw = w.win.Dir(0, math.MinInt16)
 
 	case key.CodeEnd:
-		redraw = w.elem.Dir(0, math.MaxInt16)
+		redraw = w.win.Dir(0, math.MaxInt16)
 
 	default:
 		panic("impossible")
@@ -280,7 +280,7 @@ func modKey(w *win, mods [4]bool, e key.Event) [4]bool {
 			if !newMods[i] {
 				m = -m
 			}
-			if w.elem.Mod(m) {
+			if w.win.Mod(m) {
 				w.Send(paint.Event{})
 			}
 			mods = newMods

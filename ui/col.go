@@ -14,10 +14,10 @@ type Col struct {
 	size       image.Point
 	lineHeight int
 	minHeight  int
-	rows       []Elem
+	rows       []Row
 	heights    []float64 // frac of height
 	resizing   int       // row index being resized or -1
-	Elem                 // focus
+	Row                  // focus
 }
 
 // NewCol returns a new column.
@@ -36,16 +36,16 @@ func NewCol(w *Win) *Col {
 	return &Col{
 		win:       w,
 		minHeight: w.lineHeight + 2*int(padPt*w.dpi/72.0+0.5),
-		rows:      []Elem{bg},
+		rows:      []Row{bg},
 		heights:   []float64{1.0},
 		resizing:  -1,
-		Elem:      bg,
+		Row:       bg,
 	}
 }
 
 // Add adds an element to the column.
-func (c *Col) Add(e Elem) {
-	e = newFrame(int(c.win.dpi*padPt/72.0), e)
+func (c *Col) Add(row Row) {
+	row = newFrame(int(c.win.dpi*padPt/72.0), row)
 	switch n := len(c.rows); n {
 	case 0:
 		panic("impossible")
@@ -56,10 +56,10 @@ func (c *Col) Add(e Elem) {
 		c.heights[n-1] = h0 + (1.0-h0)*0.5
 		c.heights = append(c.heights, 1.0)
 	}
-	c.rows = append(c.rows, e)
-	c.Elem.Focus(false)
-	e.Focus(true)
-	c.Elem = e
+	c.rows = append(c.rows, row)
+	c.Row.Focus(false)
+	row.Focus(true)
+	c.Row = row
 }
 
 // HandleBounds returns the bounding box of the handle.
@@ -157,7 +157,7 @@ func (c *Col) Move(pt image.Point) bool {
 		}
 	}
 	pt.Y -= y0(c)
-	return c.Elem.Move(pt)
+	return c.Row.Move(pt)
 }
 
 // colIndex returns the index of the Col its Win's cols array.
@@ -186,20 +186,20 @@ func moveRow(w *Win, ri int, src, dst *Col, y int) {
 	}
 	// TODO: only move a sheet if the dst can fit it.
 	// TODO: when moving a sheet, squish columns to fit.
-	dst.rows = append(dst.rows[:ri+1], append([]Elem{e}, dst.rows[ri+1:]...)...)
+	dst.rows = append(dst.rows[:ri+1], append([]Row{e}, dst.rows[ri+1:]...)...)
 	dst.heights = append(dst.heights[:ri], append([]float64{frac}, dst.heights[ri:]...)...)
 	if dst != src {
 		src.resizing = -1
-		src.Elem = src.rows[0]
+		src.Row = src.rows[0]
 		src.Focus(false)
 		src.Resize(src.size)
 
 		dst.Focus(true)
 	}
-	dst.Elem = e
+	dst.Row = e
 	dst.resizing = ri
 	dst.Resize(dst.size)
-	w.Elem = dst
+	w.Col = dst
 }
 
 func resizeRow(c *Col, pt image.Point) bool {
@@ -286,13 +286,14 @@ func (c *Col) Click(pt image.Point, button int) bool {
 		redraw = setColFocus(c, pt, button)
 	}
 	pt.Y -= y0(c)
-	return c.Elem.Click(pt, button) || redraw
+	_, redraw1 := c.Row.Click(pt, button)
+	return redraw1 || redraw
 }
 
 func y0(c *Col) int {
 	var y0 int
 	for i, o := range c.rows {
-		if o == c.Elem {
+		if o == c.Row {
 			break
 		}
 		y0 = int(c.heights[i] * float64(c.size.Y))
@@ -305,17 +306,17 @@ func setColFocus(c *Col, pt image.Point, button int) bool {
 		return false
 	}
 	var i int
-	var o Elem
+	var o Row
 	for i, o = range c.rows {
 		y1 := int(c.heights[i] * float64(c.size.Y))
 		if pt.Y < y1 {
 			break
 		}
 	}
-	if c.Elem != o {
-		c.Elem.Focus(false)
+	if c.Row != o {
+		c.Row.Focus(false)
 		o.Focus(true)
-		c.Elem = o
+		c.Row = o
 		return true
 	}
 	return false
