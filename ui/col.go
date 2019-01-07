@@ -30,7 +30,7 @@ func NewCol(w *Win) *Col {
 			{BG: hiBG3},
 		}
 	)
-	bg := NewTextBox(bodyTextStyles, image.ZP)
+	bg := NewTextBox(w, bodyTextStyles, image.ZP)
 	bg.SetText(rope.New("Del Add\n"))
 	return &Col{
 		win:       w,
@@ -317,7 +317,7 @@ func (c *Col) Click(pt image.Point, button int) {
 		cmd := rope.Slice(txt, addr[0], addr[1]).String()
 		switch cmd {
 		case "Add":
-			c.Add(NewSheet(c, ""))
+			c.Add(NewSheet(c.win, ""))
 		case "AddCol":
 			c.win.Add()
 		case "Del":

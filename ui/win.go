@@ -13,11 +13,12 @@ type Win struct {
 	dpi        float32
 	face       font.Face // default font face
 	lineHeight int
-	size       image.Point
 	minWidth   int
+	size       image.Point
 	cols       []*Col
 	widths     []float64 // frac of width
 	resizing   int       // col index being resized or -1
+	mods       [4]bool   // currently held modifier keys
 	*Col                 // focus
 }
 
@@ -204,4 +205,23 @@ func setWinFocus(w *Win, pt image.Point, button int) bool {
 		return true
 	}
 	return false
+}
+
+// Focus handles focus change events.
+func (w *Win) Focus(focus bool) {
+	if !focus {
+		w.mods = [4]bool{}
+	}
+	w.Col.Focus(focus)
+}
+
+// Mod handles modifier key state change events.
+func (w *Win) Mod(m int) {
+	switch {
+	case m > 0 && m < len(w.mods):
+		w.mods[m] = true
+	case m < 0 && -m < len(w.mods):
+		w.mods[-m] = false
+	}
+	w.Col.Mod(m)
 }

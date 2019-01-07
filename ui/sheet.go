@@ -20,28 +20,28 @@ type Sheet struct {
 }
 
 // NewSheet returns a new sheet.
-func NewSheet(c *Col, title string) *Sheet {
+func NewSheet(w *Win, title string) *Sheet {
 	var (
 		tagTextStyles = [...]TextStyle{
-			{FG: fg, BG: tagBG, Face: c.win.face},
+			{FG: fg, BG: tagBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
 		bodyTextStyles = [...]TextStyle{
-			{FG: fg, BG: bodyBG, Face: c.win.face},
+			{FG: fg, BG: bodyBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
 	)
-	tag := NewTextBox(tagTextStyles, image.ZP)
+	tag := NewTextBox(w, tagTextStyles, image.ZP)
 	tag.SetText(rope.New(title + " | Del Undo Put"))
-	body := NewTextBox(bodyTextStyles, image.ZP)
+	body := NewTextBox(w, bodyTextStyles, image.ZP)
 	s := &Sheet{
 		tag:     tag,
 		body:    body,
-		minTagH: c.win.lineHeight,
+		minTagH: w.lineHeight,
 		TextBox: body,
 	}
 	tag.SetSyntax(s)

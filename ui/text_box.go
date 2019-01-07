@@ -27,6 +27,7 @@ const (
 
 // TextBox is an editable text box UI widget.
 type TextBox struct {
+	win  *Win
 	size image.Point
 	text rope.Rope
 	at   int64 // address of the first rune in the window
@@ -34,9 +35,7 @@ type TextBox struct {
 	focus      bool
 	showCursor bool
 	blinkTime  time.Time
-
-	mods      [4]bool // which modifier keys are held, 0 is unused.
-	cursorCol int     // rune offset of the cursor in its line; -1 is recompute
+	cursorCol  int // rune offset of the cursor in its line; -1 is recompute
 
 	button         int         // currently held mouse button
 	pt             image.Point // where's the mouse
@@ -77,8 +76,9 @@ type span struct {
 // 	1: 1-click selection style
 // 	2: 2-click selection style
 // 	3: 3-click selection style
-func NewTextBox(styles [4]TextStyle, size image.Point) *TextBox {
+func NewTextBox(w *Win, styles [4]TextStyle, size image.Point) *TextBox {
 	b := &TextBox{
+		win:   w,
 		size:  size,
 		text:  rope.Empty(),
 		style: styles[0],
@@ -205,7 +205,6 @@ func (b *TextBox) Focus(focus bool) {
 	if focus {
 		b.blinkTime = b.now().Add(blinkDuration)
 	} else {
-		b.mods = [4]bool{}
 		b.button = 0
 	}
 }
@@ -301,10 +300,10 @@ func (b *TextBox) Click(pt image.Point, button int) (int, [2]int64) {
 	case b.button > 0 && button == -b.button:
 		return unclick(b)
 
-	case b.button == 0 && button == 1 && b.mods[2]:
+	case b.button == 0 && button == 1 && b.win.mods[2]:
 		button = 2
 
-	case b.button == 0 && button == 1 && b.mods[3]:
+	case b.button == 0 && button == 1 && b.win.mods[3]:
 		button = 3
 
 	case b.button != 1 && button == -1: // mod-button unclick
@@ -635,19 +634,8 @@ func scrollDown(b *TextBox, delta int) {
 	dirtyLines(b)
 }
 
-// Mod handles a modifier key state change event
-// and returns whether the text box image needs to be redrawn.
-//
-// The absolute value of the argument indicates the modifier key.
-// A positive value indicates the key was pressed.
-// A negative value indicates the key was released.
+// Mod handles a modifier key state change event.
 func (b *TextBox) Mod(m int) {
-	switch {
-	case m > 0 && m < len(b.mods):
-		b.mods[m] = true
-	case m < 0 && -m < len(b.mods):
-		b.mods[-m] = false
-	}
 	if b.button > 0 {
 		b.Click(b.pt, m)
 	}
