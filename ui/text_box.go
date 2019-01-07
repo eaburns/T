@@ -159,7 +159,6 @@ func (b *TextBox) SetSyntax(highlighter Highlighter) {
 // Edit performs an edit on the text of the text box
 // and returns the diffs applied to the text.
 // If more than 0 diffs are returned, the text box needs to be redrawn.
-// TODO: Edit only needs to be redrawn if a diff is in the window.
 func (b *TextBox) Edit(t string) (edit.Diffs, error) { return ed(b, t) }
 
 func ed(b *TextBox, t string) (edit.Diffs, error) {
