@@ -338,7 +338,7 @@ func unclick(b *Box) (int, [2]int64) {
 	if button != 1 {
 		setDot(b, button, 0, 0)
 	}
-	return button, dot
+	return -button, dot
 }
 
 func click(b *Box, button int) {

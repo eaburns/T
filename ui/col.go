@@ -60,6 +60,22 @@ func (c *Col) Add(row Row) {
 	c.Row.Focus(false)
 	row.Focus(true)
 	c.Row = row
+	c.Resize(c.size)
+}
+
+// Del deletes a row from the column.
+func (c *Col) Del(row Row) {
+	for i := 1; i < len(c.rows); i++ {
+		if c.rows[i] == row {
+			c.rows = append(c.rows[:i], c.rows[i+1:]...)
+			c.heights = append(c.heights[:i-1], c.heights[i:]...)
+			if row == c.Row {
+				c.Row = c.rows[0]
+			}
+			c.Resize(c.size)
+			return
+		}
+	}
 }
 
 // Tick handles tick events.
@@ -293,7 +309,41 @@ func (c *Col) Click(pt image.Point, button int) {
 		setColFocus(c, pt, button)
 	}
 	pt.Y -= y0(c)
-	c.Row.Click(pt, button)
+	button, addr := c.Row.Click(pt, button)
+	if button == -2 {
+		txt := getText(c.Row)
+		if txt == nil {
+			return
+		}
+		cmd := rope.Slice(txt, addr[0], addr[1]).String()
+		switch cmd {
+		case "Add":
+			c.Add(NewSheet(c, ""))
+		case "AddCol":
+			c.win.Add()
+		case "Del":
+			c.Del(c.Row)
+		case "DelCol":
+			c.win.Del(c)
+		}
+	}
+}
+
+func getText(r Row) rope.Rope {
+	if f, ok := r.(*handleFrame); ok {
+		r = f.Row
+	}
+	if f, ok := r.(*frame); ok {
+		r = f.Row
+	}
+	switch r := r.(type) {
+	case *Sheet:
+		return r.Box.Text()
+	case *text.Box:
+		return r.Text()
+	default:
+		return nil
+	}
 }
 
 func y0(c *Col) int {

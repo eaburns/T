@@ -42,6 +42,33 @@ func NewWin(dpi float32) *Win {
 	return w
 }
 
+// Add adds a new column to the window and returns it.
+func (w *Win) Add() *Col {
+	col := NewCol(w)
+	w.cols = append([]*Col{col}, w.cols...)
+	w.widths = append([]float64{w.widths[0] / 2}, w.widths...)
+	w.Resize(w.size)
+	return col
+}
+
+// Del deletes a column unless it is the last column.
+func (w *Win) Del(col *Col) {
+	if len(w.cols) == 1 {
+		return
+	}
+	for i := range w.cols {
+		if w.cols[i] == col {
+			w.cols = append(w.cols[:i], w.cols[i+1:]...)
+			w.widths = append(w.widths[:i-1], w.widths[i:]...)
+			if col == w.Col {
+				w.Col = w.cols[0]
+			}
+			w.Resize(w.size)
+			return
+		}
+	}
+}
+
 // Tick handles tick events.
 func (w *Win) Tick() bool {
 	var redraw bool
