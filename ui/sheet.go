@@ -122,7 +122,7 @@ func (s *Sheet) Move(pt image.Point) bool {
 }
 
 // Click handles click events.
-func (s *Sheet) Click(pt image.Point, button int) ([2]int64, bool) {
+func (s *Sheet) Click(pt image.Point, button int) (int, [2]int64, bool) {
 	var redraw bool
 	if button > 0 {
 		redraw = setSheetFocus(s, pt, button)
@@ -131,8 +131,8 @@ func (s *Sheet) Click(pt image.Point, button int) ([2]int64, bool) {
 	if s.Box == s.body {
 		pt.Y -= s.tagH
 	}
-	_, r := s.Box.Click(pt, button)
-	return [2]int64{}, r || redraw
+	b, addr, r := s.Box.Click(pt, button)
+	return b, addr, r || redraw
 }
 
 func setSheetFocus(s *Sheet, pt image.Point, button int) bool {

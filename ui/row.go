@@ -35,12 +35,16 @@ type Row interface {
 	Move(pt image.Point) bool
 
 	// Click handles mouse button events.
-	// It returns whether the element needs to be redrawn.
+	// The first return value is the button ultimately pressed
+	// (this can differ from the argument button, for example,
+	// if modifier keys are being held).
+	// If the button is < 0, the second return value is the clicked address.
+	// The third return value is whether the row needs to be redrawn.
 	//
 	// The absolute value of the argument indicates the mouse button.
 	// A positive value indicates the button was pressed.
 	// A negative value indicates the button was released.
-	Click(pt image.Point, button int) ([2]int64, bool)
+	Click(pt image.Point, button int) (int, [2]int64, bool)
 
 	// Wheel handles mouse wheel events.
 	// It returns whether the element needs to be redrawn.

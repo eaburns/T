@@ -286,7 +286,7 @@ func (c *Col) Click(pt image.Point, button int) bool {
 		redraw = setColFocus(c, pt, button)
 	}
 	pt.Y -= y0(c)
-	_, redraw1 := c.Row.Click(pt, button)
+	_, _, redraw1 := c.Row.Click(pt, button)
 	return redraw1 || redraw
 }
 

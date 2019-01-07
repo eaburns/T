@@ -301,42 +301,69 @@ func (b *Box) Wheel(x, y int) bool {
 }
 
 // Click handles a mouse button press or release event.
-// If button < 0 then the first return value is the address that was clicked.
-// The second return value is whether the text box image needs to be redrawn.
+// The first return value is the button ultimately pressed
+// (this can differ from the argument button, for example,
+// if modifier keys are being held).
+// If the button is < 0, the second return value is the clicked address.
+// The third return value is whether the text box image needs to be redrawn.
 //
 // The absolute value of the argument indicates the mouse button.
 // A positive value indicates the button was pressed.
 // A negative value indicates the button was released.
-func (b *Box) Click(pt image.Point, button int) ([2]int64, bool) {
+func (b *Box) Click(pt image.Point, button int) (int, [2]int64, bool) {
 	b.pt = pt
+	var addr [2]int64
+	var redraw bool
 	switch {
+	case b.button > 0 && button > 0:
+		// b.button/button mouse chord; ignore it for now.
+
 	case b.button > 0 && button == -b.button:
-		dot := b.dots[b.button].At
-		if button != -1 {
-			setDot(b, b.button, 0, 0)
-		}
-		b.button = 0
-		return dot, button != -1
+		button, addr, redraw = unclick(b)
+
+	case b.button == 0 && button == 1 && b.mods[2]:
+		button = 2
+		redraw = click(b, 2)
+
+	case b.button == 0 && button == 1 && b.mods[3]:
+		button = 3
+		redraw = click(b, 3)
+
+	case b.button != 1 && button == -1: // mod-button unclick
+		button, addr, redraw = unclick(b)
 
 	case b.button == 0 && button > 0:
-		b.button = button
-		if button == 1 {
-			if b.now().Sub(b.clickTime) < doubleClickDuration {
-				return [2]int64{}, doubleClick(b)
-			}
-			b.clickTime = b.now()
-		}
-
-		b.clickAt, b.dragBox = atPoint(b, pt)
-		setDot(b, button, b.clickAt, b.clickAt)
-		if button == 1 {
-			b.cursorCol = -1
-		}
-		return [2]int64{}, true
-
-	default:
-		return [2]int64{}, false // ignore chords for now
+		redraw = click(b, button)
 	}
+	return button, addr, redraw
+}
+
+func unclick(b *Box) (int, [2]int64, bool) {
+	button := b.button
+	b.button = 0
+	dot := b.dots[button].At
+	if button != 1 {
+		setDot(b, button, 0, 0)
+		return button, dot, true
+	}
+	return button, dot, false
+}
+
+func click(b *Box, button int) bool {
+	b.button = button
+	if button == 1 {
+		if b.now().Sub(b.clickTime) < doubleClickDuration {
+			return doubleClick(b)
+		}
+		b.clickTime = b.now()
+	}
+
+	b.clickAt, b.dragBox = atPoint(b, b.pt)
+	setDot(b, button, b.clickAt, b.clickAt)
+	if button == 1 {
+		b.cursorCol = -1
+	}
+	return true
 }
 
 var delim = [][2]rune{
@@ -649,6 +676,16 @@ func (b *Box) Mod(m int) bool {
 	case m < 0 && -m < len(b.mods):
 		b.mods[-m] = false
 	}
+
+	if b.button > 0 {
+		// This must be a chord,
+		// and chords ignore
+		// the clicked address,
+		// so this is OK.
+		_, _, redraw := b.Click(b.pt, m)
+		return redraw
+	}
+
 	return false
 }
 
