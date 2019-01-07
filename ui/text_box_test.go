@@ -1,4 +1,4 @@
-package text
+package ui
 
 import (
 	"bytes"
@@ -19,14 +19,14 @@ import (
 )
 
 var (
-	A          = basicfont.Face7x13.Advance
-	H          = basicfont.Face7x13.Height + basicfont.Face7x13.Descent
-	testStyle1 = Style{FG: color.Black, BG: color.White, Face: basicfont.Face7x13}
-	testStyle2 = Style{FG: color.White, BG: color.Black, Face: basicfont.Face7x13}
-	testStyle3 = Style{FG: color.Black, BG: color.Black, Face: basicfont.Face7x13}
-	testStyle4 = Style{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
-	testStyles = [4]Style{testStyle1, testStyle2, testStyle3, testStyle4}
-	testSize   = image.Pt(100, 100)
+	A              = basicfont.Face7x13.Advance
+	H              = basicfont.Face7x13.Height + basicfont.Face7x13.Descent
+	testTextStyle1 = TextStyle{FG: color.Black, BG: color.White, Face: basicfont.Face7x13}
+	testTextStyle2 = TextStyle{FG: color.White, BG: color.Black, Face: basicfont.Face7x13}
+	testTextStyle3 = TextStyle{FG: color.Black, BG: color.Black, Face: basicfont.Face7x13}
+	testTextStyle4 = TextStyle{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
+	testTextStyles = [4]TextStyle{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
+	testSize       = image.Pt(100, 100)
 )
 
 func TestEdit(t *testing.T) {
@@ -61,7 +61,7 @@ func TestEdit(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		b := NewBox(testStyles, testSize)
+		b := NewTextBox(testTextStyles, testSize)
 		b.SetText(rope.New(test.in))
 		b.dots[1].At = test.inDot
 
@@ -98,7 +98,7 @@ func match(re, str string) bool {
 
 func TestTextHeight(t *testing.T) {
 	const str = "Hello,\nWorld!"
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New(str))
 	if h := b.TextHeight(); h != 2*H {
 		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 2*H)
@@ -107,7 +107,7 @@ func TestTextHeight(t *testing.T) {
 
 func TestTextHeightTrailingNewline(t *testing.T) {
 	const str = "Hello,\nWorld!\n"
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New(str))
 	if h := b.TextHeight(); h != 3*H {
 		t.Errorf("(%q).TextHeight()=%d, want %d", str, h, 3*H)
@@ -223,16 +223,16 @@ func TestClick1(t *testing.T) {
 			in:   "line1\nline2\nline3",
 			hi: []Highlight{
 				{
-					At:    [2]int64{0, 4}, // "line" in line1
-					Style: testStyle2,
+					At:        [2]int64{0, 4}, // "line" in line1
+					TextStyle: testTextStyle2,
 				},
 				{
-					At:    [2]int64{6, 7}, // "l" in line2
-					Style: testStyle3,
+					At:        [2]int64{6, 7}, // "l" in line2
+					TextStyle: testTextStyle3,
 				},
 				{
-					At:    [2]int64{12, 16}, // "line" in line3
-					Style: testStyle4,
+					At:        [2]int64{12, 16}, // "line" in line3
+					TextStyle: testTextStyle4,
 				},
 			},
 			pt:      image.Pt(A+A/2, H+H/2), // line 1, col 1
@@ -242,7 +242,7 @@ func TestClick1(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
 			b.Click(test.pt, 1)
@@ -402,16 +402,16 @@ var dragTests = []struct {
 		in:   "line1\nline2\nline3",
 		hi: []Highlight{
 			{
-				At:    [2]int64{0, 4}, // "line" in line1
-				Style: testStyle2,
+				At:        [2]int64{0, 4}, // "line" in line1
+				TextStyle: testTextStyle2,
 			},
 			{
-				At:    [2]int64{6, 7}, // "l" in line2
-				Style: testStyle3,
+				At:        [2]int64{6, 7}, // "l" in line2
+				TextStyle: testTextStyle3,
 			},
 			{
-				At:    [2]int64{12, 16}, // "line" in line3
-				Style: testStyle4,
+				At:        [2]int64{12, 16}, // "line" in line3
+				TextStyle: testTextStyle4,
 			},
 		},
 		pt: [2]image.Point{
@@ -426,7 +426,7 @@ func TestDrag1(t *testing.T) {
 	for _, test := range dragTests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
 			b.Click(test.pt[0], 1)
@@ -442,7 +442,7 @@ func TestDrag2(t *testing.T) {
 	for _, test := range dragTests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
 			b.Click(test.pt[0], 2)
@@ -613,7 +613,7 @@ func TestDoubleClick1(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.now = fixedTime
 			b.Click(test.pt, 1)
@@ -749,7 +749,7 @@ func TestDir1(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.dots[1].At = test.dot
 			b.Dir(test.x, test.y)
@@ -762,7 +762,7 @@ func TestDir1(t *testing.T) {
 }
 
 func TestUpPreservesColumn(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New("012\n4\n678"))
 	b.dots[1].At = [2]int64{8, 8}
 
@@ -780,7 +780,7 @@ func TestUpPreservesColumn(t *testing.T) {
 }
 
 func TestDownPreservesColumn(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New("012\n4\n678"))
 	b.dots[1].At = [2]int64{3, 3}
 
@@ -801,7 +801,7 @@ var lines500 = strings.Repeat("\n", 500)
 
 func TestWheelUp(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	var now time.Time
 	b.now = func() time.Time {
@@ -829,7 +829,7 @@ func TestWheelUp(t *testing.T) {
 
 func TestWheelDown(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	var now time.Time
 	b.now = func() time.Time {
@@ -857,7 +857,7 @@ func TestWheelDown(t *testing.T) {
 
 func TestDragScrollUp(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	var now time.Time
 	b.now = func() time.Time {
@@ -888,7 +888,7 @@ func TestDragScrollUp(t *testing.T) {
 
 func TestDragScrollDown(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	var now time.Time
 	b.now = func() time.Time {
@@ -920,7 +920,7 @@ func TestDragScrollDown(t *testing.T) {
 
 func TestPageUp(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	b.at = int64(2.5 * float64(pageSize(b)))
 
@@ -942,7 +942,7 @@ func TestPageUp(t *testing.T) {
 
 func TestPageDown(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	b.at = text.Len() - int64(2.5*float64(pageSize(b)))
 
@@ -965,7 +965,7 @@ func TestPageDown(t *testing.T) {
 
 func TestHome(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	b.at = text.Len()
 
@@ -982,7 +982,7 @@ func TestHome(t *testing.T) {
 
 func TestEnd(t *testing.T) {
 	text := rope.New(lines500)
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(text)
 	b.at = text.Len()
 
@@ -1123,7 +1123,7 @@ func TestType(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			b := NewBox(testStyles, testSize)
+			b := NewTextBox(testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.dots[1].At = test.dot
 			b.Rune(test.r)
@@ -1144,10 +1144,10 @@ func TestType(t *testing.T) {
 // out-of-bounds of the text.
 func TestClickAfterLastLineSelected(t *testing.T) {
 	const str = "Hello"
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New(str))
 	b.syntax = []Highlight{
-		{At: [2]int64{0, 3}, Style: testStyle1},
+		{At: [2]int64{0, 3}, TextStyle: testTextStyle1},
 	}
 	b.Click(image.Pt(10*A+A/2, 4*H+H/2), 1)
 
@@ -1201,28 +1201,28 @@ func TestDraw(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	size := image.Pt(300, 750)
-	style := Style{
+	style := TextStyle{
 		FG:   color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF},
 		BG:   color.RGBA{R: 0xFE, G: 0xF0, B: 0xE6, A: 0xFF},
 		Face: truetype.NewFace(goregular, &truetype.Options{Size: 16}),
 	}
-	style1 := Style{
+	style1 := TextStyle{
 		FG:   color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF},
 		BG:   color.RGBA{R: 0xB6, G: 0xDA, B: 0xFD, A: 0xFF},
 		Face: truetype.NewFace(goregular, &truetype.Options{Size: 16}),
 	}
-	styles := [4]Style{style, style1, style, style}
-	b := NewBox(styles, size)
+	styles := [4]TextStyle{style, style1, style, style}
+	b := NewTextBox(styles, size)
 	b.SetText(rope.New(text))
 	b.dots[1].At = [2]int64{7, 12}
-	b.dots[1].Style = style1
+	b.dots[1].TextStyle = style1
 	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestDrawEmptyText(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	b.Draw(true, img)
@@ -1230,7 +1230,7 @@ func TestDrawEmptyText(t *testing.T) {
 }
 
 func TestDrawCursorMidLine(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
@@ -1240,7 +1240,7 @@ func TestDrawCursorMidLine(t *testing.T) {
 }
 
 func TestDrawCursorAtEndOfLastLine(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
@@ -1250,7 +1250,7 @@ func TestDrawCursorAtEndOfLastLine(t *testing.T) {
 }
 
 func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New("Hello\n"))
 	b.Focus(true)
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
@@ -1260,7 +1260,7 @@ func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
 }
 
 func TestCursorBlink(t *testing.T) {
-	b := NewBox(testStyles, testSize)
+	b := NewTextBox(testTextStyles, testSize)
 	b.SetText(rope.New(""))
 	img := image.NewRGBA(image.Rectangle{Max: testSize})
 	var now time.Time

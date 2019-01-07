@@ -1,4 +1,4 @@
-package text
+package ui
 
 import (
 	"image/color"
@@ -6,17 +6,17 @@ import (
 	"golang.org/x/image/font"
 )
 
-// A Style describes the color, font, and size of text.
-type Style struct {
+// A TextStyle describes the color, font, and size of text.
+type TextStyle struct {
 	// FG and BG are the foreground and background colors of the text.
 	FG, BG color.Color
 	// Face is the font face, describing the font and size.
 	font.Face
 }
 
-// mergeStyles returns other with any nil fields
+// mergeTextStyles returns other with any nil fields
 // replaced by the corresponding field of sty.
-func (sty Style) merge(other Style) Style {
+func (sty TextStyle) merge(other TextStyle) TextStyle {
 	if other.FG == nil {
 		other.FG = sty.FG
 	}
@@ -33,6 +33,6 @@ func (sty Style) merge(other Style) Style {
 type Highlight struct {
 	// At is the addressed string.
 	At [2]int64
-	// Style is the style to apply to the string.
-	Style
+	// TextStyle is the style to apply to the string.
+	TextStyle
 }

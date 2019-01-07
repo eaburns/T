@@ -5,7 +5,6 @@ import (
 	"image/draw"
 
 	"github.com/eaburns/T/rope"
-	"github.com/eaburns/T/text"
 )
 
 // A Col is a column of sheets.
@@ -24,14 +23,14 @@ type Col struct {
 // TODO: NewCol is just a temporary implementation.
 func NewCol(w *Win) *Col {
 	var (
-		bodyStyles = [...]text.Style{
+		bodyTextStyles = [...]TextStyle{
 			{FG: fg, BG: colBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
 	)
-	bg := text.NewBox(bodyStyles, image.ZP)
+	bg := NewTextBox(bodyTextStyles, image.ZP)
 	bg.SetText(rope.New("Del Add\n"))
 	return &Col{
 		win:       w,
@@ -338,8 +337,8 @@ func getText(r Row) rope.Rope {
 	}
 	switch r := r.(type) {
 	case *Sheet:
-		return r.Box.Text()
-	case *text.Box:
+		return r.TextBox.Text()
+	case *TextBox:
 		return r.Text()
 	default:
 		return nil

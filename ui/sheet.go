@@ -2,56 +2,54 @@ package ui
 
 import (
 	"image"
-	"image/color"
 	"image/draw"
 	"math"
 
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
-	"github.com/eaburns/T/text"
 )
 
 // A Sheet is a tag and a body.
 // TODO: better document the Sheet type.
 type Sheet struct {
-	tag           *text.Box
-	body          *text.Box
+	tag           *TextBox
+	body          *TextBox
 	tagH, minTagH int
 	size          image.Point
-	*text.Box     // the focus element: the tag or the body.
+	*TextBox      // the focus element: the tag or the body.
 }
 
 // NewSheet returns a new sheet.
 func NewSheet(c *Col, title string) *Sheet {
 	var (
-		tagStyles = [...]text.Style{
+		tagTextStyles = [...]TextStyle{
 			{FG: fg, BG: tagBG, Face: c.win.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
-		bodyStyles = [...]text.Style{
+		bodyTextStyles = [...]TextStyle{
 			{FG: fg, BG: bodyBG, Face: c.win.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
 	)
-	tag := text.NewBox(tagStyles, image.ZP)
+	tag := NewTextBox(tagTextStyles, image.ZP)
 	tag.SetText(rope.New(title + " | Del Undo Put"))
-	body := text.NewBox(bodyStyles, image.ZP)
+	body := NewTextBox(bodyTextStyles, image.ZP)
 	s := &Sheet{
 		tag:     tag,
 		body:    body,
 		minTagH: c.win.lineHeight,
-		Box:     body,
+		TextBox: body,
 	}
 	tag.SetSyntax(s)
 	return s
 }
 
 // Body returns the sheet's body text box.
-func (s *Sheet) Body() *text.Box { return s.body }
+func (s *Sheet) Body() *TextBox { return s.body }
 
 // Tick handles tic events.
 func (s *Sheet) Tick() bool {
@@ -89,10 +87,6 @@ func (s *Sheet) HandleBounds() image.Rectangle {
 	return image.Rect(s.size.X-s.minTagH, 0, s.size.X, s.minTagH)
 }
 
-func fillRect(img draw.Image, c color.Color, r image.Rectangle) {
-	draw.Draw(img, r, image.NewUniform(c), image.ZP, draw.Src)
-}
-
 // Resize handles resize events.
 func (s *Sheet) Resize(size image.Point) {
 	s.size = size
@@ -101,7 +95,7 @@ func (s *Sheet) Resize(size image.Point) {
 }
 
 // Update watches for updates to the tag and resizes it to fit the text height.
-func (s *Sheet) Update([]text.Highlight, edit.Diffs, rope.Rope) []text.Highlight {
+func (s *Sheet) Update([]Highlight, edit.Diffs, rope.Rope) []Highlight {
 	oldTagH := s.tagH
 	resetTagHeight(s, s.size)
 	if s.tagH != oldTagH {
@@ -122,10 +116,10 @@ func resetTagHeight(s *Sheet, size image.Point) {
 
 // Move handles movement events.
 func (s *Sheet) Move(pt image.Point) {
-	if s.Box == s.body {
+	if s.TextBox == s.body {
 		pt.Y -= s.tagH
 	}
-	s.Box.Move(pt)
+	s.TextBox.Move(pt)
 }
 
 // Click handles click events.
@@ -134,10 +128,10 @@ func (s *Sheet) Click(pt image.Point, button int) (int, [2]int64) {
 		setSheetFocus(s, pt, button)
 	}
 
-	if s.Box == s.body {
+	if s.TextBox == s.body {
 		pt.Y -= s.tagH
 	}
-	return s.Box.Click(pt, button)
+	return s.TextBox.Click(pt, button)
 }
 
 func setSheetFocus(s *Sheet, pt image.Point, button int) bool {
@@ -145,15 +139,15 @@ func setSheetFocus(s *Sheet, pt image.Point, button int) bool {
 		return false
 	}
 	if pt.Y < s.tagH {
-		if s.Box != s.tag {
-			s.Box = s.tag
+		if s.TextBox != s.tag {
+			s.TextBox = s.tag
 			s.body.Focus(false)
 			s.tag.Focus(true)
 			return true
 		}
 	} else {
-		if s.Box != s.body {
-			s.Box = s.body
+		if s.TextBox != s.body {
+			s.TextBox = s.body
 			s.tag.Focus(false)
 			s.body.Focus(true)
 			return true

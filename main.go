@@ -12,7 +12,6 @@ import (
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/re1"
 	"github.com/eaburns/T/rope"
-	"github.com/eaburns/T/text"
 	"github.com/eaburns/T/ui"
 	"golang.org/x/exp/shiny/driver/gldriver"
 	"golang.org/x/exp/shiny/screen"
@@ -291,9 +290,9 @@ func bufTex(scr screen.Screen, sz image.Point) (screen.Buffer, screen.Texture) {
 }
 
 type syntax struct {
-	Regexp *re1.Regexp
-	Group  int
-	Style  text.Style
+	Regexp    *re1.Regexp
+	Group     int
+	TextStyle ui.TextStyle
 }
 
 var (
@@ -318,16 +317,16 @@ type highlighter struct {
 	face font.Face
 }
 
-func (h highlighter) Update(_ []text.Highlight, _ edit.Diffs, txt rope.Rope) []text.Highlight {
+func (h highlighter) Update(_ []ui.Highlight, _ edit.Diffs, txt rope.Rope) []ui.Highlight {
 	syntax := []syntax{
-		{Regexp: comment, Style: text.Style{FG: commentColor}},
-		{Regexp: stringLiteral, Style: text.Style{FG: stringColor}},
-		{Regexp: runeLiteral, Style: text.Style{FG: stringColor}},
-		{Regexp: keyword, Group: 2, Style: text.Style{Face: h.face}},
+		{Regexp: comment, TextStyle: ui.TextStyle{FG: commentColor}},
+		{Regexp: stringLiteral, TextStyle: ui.TextStyle{FG: stringColor}},
+		{Regexp: runeLiteral, TextStyle: ui.TextStyle{FG: stringColor}},
+		{Regexp: keyword, Group: 2, TextStyle: ui.TextStyle{Face: h.face}},
 	}
 
 	var at int64
-	var hi []text.Highlight
+	var hi []ui.Highlight
 	for {
 		matches := make([][]int64, len(syntax))
 		for i, s := range syntax {
@@ -351,9 +350,9 @@ func (h highlighter) Update(_ []text.Highlight, _ edit.Diffs, txt rope.Rope) []t
 		if at0 == at {
 			panic("bad syntax regexp")
 		}
-		hi = append(hi, text.Highlight{
-			At:    [2]int64{matches[index][0], matches[index][1]},
-			Style: syntax[index].Style,
+		hi = append(hi, ui.Highlight{
+			At:        [2]int64{matches[index][0], matches[index][1]},
+			TextStyle: syntax[index].TextStyle,
 		})
 	}
 }

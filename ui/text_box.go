@@ -1,18 +1,4 @@
-// Package text implements a text box UI widget.
-//
-// The text box tries to assume no particular UI framework (like shiny).
-// The intent is that most of the logic here is portable across frameworks
-// and need only a small shim to adapt to a new one.
-//
-// The interface of the text box is also purely synchronous.
-// To drive asyncronous events, the Tick method
-// must be called periodically.
-//
-// It is also not safe for concurrent use.
-// The caller must ensure that all methods
-// are called from only a single goroutine
-// or are otherwise synchronized.
-package text
+package ui
 
 import (
 	"bufio"
@@ -39,8 +25,8 @@ const (
 	doubleClickDuration = 500 * time.Millisecond
 )
 
-// Box is an editable text box UI widget.
-type Box struct {
+// TextBox is an editable text box UI widget.
+type TextBox struct {
 	size image.Point
 	text rope.Rope
 	at   int64 // address of the first rune in the window
@@ -57,11 +43,11 @@ type Box struct {
 	clickAt        int64       // address of the glyph clicked by the mouse
 	clickTime      time.Time
 	dragAt         int64           // address of the glyph under the dragging mouse
-	dragBox        image.Rectangle // bounding-box of the dragAt glyph
+	dragTextBox    image.Rectangle // bounding-box of the dragAt glyph
 	dragScrollTime time.Time       // time when dragging off screen scrolls
 	wheelTime      time.Time       // time when we will consider the next wheel
 
-	style       Style
+	style       TextStyle
 	dots        [4]Highlight // cursor for unused, click 1, click 2, and click 3.
 	highlight   []Highlight  // highlighted words
 	syntax      []Highlight  // syntax highlighting
@@ -81,26 +67,26 @@ type line struct {
 
 type span struct {
 	w     fixed.Int26_6
-	style Style
+	style TextStyle
 	text  string
 }
 
-// NewBox returns a new, empty text box.
+// NewTextBox returns a new, empty text box.
 // The styles are:
 // 	0: default style
 // 	1: 1-click selection style
 // 	2: 2-click selection style
 // 	3: 3-click selection style
-func NewBox(styles [4]Style, size image.Point) *Box {
-	b := &Box{
+func NewTextBox(styles [4]TextStyle, size image.Point) *TextBox {
+	b := &TextBox{
 		size:  size,
 		text:  rope.Empty(),
 		style: styles[0],
 		dots: [...]Highlight{
-			{Style: styles[0]},
-			{Style: styles[1]},
-			{Style: styles[2]},
-			{Style: styles[3]},
+			{TextStyle: styles[0]},
+			{TextStyle: styles[1]},
+			{TextStyle: styles[2]},
+			{TextStyle: styles[3]},
 		},
 		cursorCol: -1,
 		now:       func() time.Time { return time.Now() },
@@ -109,7 +95,7 @@ func NewBox(styles [4]Style, size image.Point) *Box {
 }
 
 // TextHeight returns the height of the displayed text.
-func (b *Box) TextHeight() int {
+func (b *TextBox) TextHeight() int {
 	var y fixed.Int26_6
 	lines := b.lines()
 	for _, l := range lines {
@@ -131,11 +117,11 @@ func (b *Box) TextHeight() int {
 }
 
 // Text returns the current text of the text box.
-func (b *Box) Text() rope.Rope { return b.text }
+func (b *TextBox) Text() rope.Rope { return b.text }
 
 // SetText sets the text of the text box.
 // The text box always must be redrawn after setting the text.
-func (b *Box) SetText(text rope.Rope) {
+func (b *TextBox) SetText(text rope.Rope) {
 	b.text = text
 	if b.highlighter != nil {
 		b.syntax = b.highlighter.Update(nil, nil, b.text)
@@ -147,7 +133,7 @@ func (b *Box) SetText(text rope.Rope) {
 // The dots are numbered 1, 2, and 3.
 // They correspond to 1-, 2-, and 3-clicking.
 // If i is not 1, 2, or 3, then [2]int64{} is returned.
-func (b *Box) Dot(i int) [2]int64 {
+func (b *TextBox) Dot(i int) [2]int64 {
 	if i < 1 || i >= len(b.dots) {
 		return [2]int64{}
 	}
@@ -164,7 +150,7 @@ type Highlighter interface {
 // SetSyntax sets the current syntax highlighter and
 // re-computes the syntax highlighting.
 // The text box always must be redrawn after setting the syntax.
-func (b *Box) SetSyntax(highlighter Highlighter) {
+func (b *TextBox) SetSyntax(highlighter Highlighter) {
 	b.highlighter = highlighter
 	b.syntax = b.highlighter.Update(nil, nil, b.text)
 	dirtyLines(b)
@@ -174,9 +160,9 @@ func (b *Box) SetSyntax(highlighter Highlighter) {
 // and returns the diffs applied to the text.
 // If more than 0 diffs are returned, the text box needs to be redrawn.
 // TODO: Edit only needs to be redrawn if a diff is in the window.
-func (b *Box) Edit(t string) (edit.Diffs, error) { return ed(b, t) }
+func (b *TextBox) Edit(t string) (edit.Diffs, error) { return ed(b, t) }
 
-func ed(b *Box, t string) (edit.Diffs, error) {
+func ed(b *TextBox, t string) (edit.Diffs, error) {
 	dot := b.dots[1].At
 	diffs, err := edit.Edit(dot, t, ioutil.Discard, b.text)
 	if err != nil {
@@ -207,13 +193,13 @@ func ed(b *Box, t string) (edit.Diffs, error) {
 
 // Resize handles a resize event.
 // The text box must always be redrawn after being resized.
-func (b *Box) Resize(size image.Point) {
+func (b *TextBox) Resize(size image.Point) {
 	b.size = size
 	dirtyLines(b)
 }
 
 // Focus handles a focus state change.
-func (b *Box) Focus(focus bool) {
+func (b *TextBox) Focus(focus bool) {
 	b.focus = focus
 	b.showCursor = focus
 	dirtyDot(b, b.dots[1].At)
@@ -231,7 +217,7 @@ func (b *Box) Focus(focus bool) {
 //
 // Tick is intended to be called at regular intervals,
 // fast enough to drive cursor blinking and mouse-drag scolling.
-func (b *Box) Tick() bool {
+func (b *TextBox) Tick() bool {
 	now := b.now()
 	redraw := b.dirty
 	if b.focus && b.dots[1].At[0] == b.dots[1].At[1] && !b.blinkTime.After(now) {
@@ -263,12 +249,12 @@ func (b *Box) Tick() bool {
 
 // Move handles the event of the mouse cursor moving to a point
 // and returns whether the text box image needs to be redrawn.
-func (b *Box) Move(pt image.Point) {
+func (b *TextBox) Move(pt image.Point) {
 	b.pt = pt
-	if b.button <= 0 || b.button >= len(b.dots) || pt.In(b.dragBox) {
+	if b.button <= 0 || b.button >= len(b.dots) || pt.In(b.dragTextBox) {
 		return
 	}
-	b.dragAt, b.dragBox = atPoint(b, pt)
+	b.dragAt, b.dragTextBox = atPoint(b, pt)
 	if b.clickAt <= b.dragAt {
 		setDot(b, b.button, b.clickAt, b.dragAt)
 	} else {
@@ -282,7 +268,7 @@ func (b *Box) Move(pt image.Point) {
 // 	+y is roll down.
 // 	-x is roll left.
 // 	+x is roll right.
-func (b *Box) Wheel(x, y int) {
+func (b *TextBox) Wheel(x, y int) {
 	now := b.now()
 	if b.wheelTime.After(now) {
 		return
@@ -306,7 +292,7 @@ func (b *Box) Wheel(x, y int) {
 // The absolute value of the argument indicates the mouse button.
 // A positive value indicates the button was pressed.
 // A negative value indicates the button was released.
-func (b *Box) Click(pt image.Point, button int) (int, [2]int64) {
+func (b *TextBox) Click(pt image.Point, button int) (int, [2]int64) {
 	b.pt = pt
 	switch {
 	case b.button > 0 && button > 0:
@@ -331,7 +317,7 @@ func (b *Box) Click(pt image.Point, button int) (int, [2]int64) {
 	return button, [2]int64{}
 }
 
-func unclick(b *Box) (int, [2]int64) {
+func unclick(b *TextBox) (int, [2]int64) {
 	button := b.button
 	b.button = 0
 	dot := b.dots[button].At
@@ -341,7 +327,7 @@ func unclick(b *Box) (int, [2]int64) {
 	return -button, dot
 }
 
-func click(b *Box, button int) {
+func click(b *TextBox, button int) {
 	b.button = button
 	if button == 1 {
 		if b.now().Sub(b.clickTime) < doubleClickDuration {
@@ -350,7 +336,7 @@ func click(b *Box, button int) {
 		}
 		b.clickTime = b.now()
 	}
-	b.clickAt, b.dragBox = atPoint(b, b.pt)
+	b.clickAt, b.dragTextBox = atPoint(b, b.pt)
 	setDot(b, button, b.clickAt, b.clickAt)
 	if button == 1 {
 		b.cursorCol = -1
@@ -369,7 +355,7 @@ var delim = [][2]rune{
 	{'“', '”'},
 }
 
-func doubleClick(b *Box) {
+func doubleClick(b *TextBox) {
 	prev := prevRune(b)
 	for _, ds := range delim {
 		if ds[0] == prev {
@@ -394,7 +380,7 @@ func doubleClick(b *Box) {
 	}
 }
 
-func prevRune(b *Box) rune {
+func prevRune(b *TextBox) rune {
 	front, _ := rope.Split(b.text, b.dots[1].At[0])
 	rr := rope.NewReverseReader(front)
 	r, _, err := rr.ReadRune()
@@ -404,7 +390,7 @@ func prevRune(b *Box) rune {
 	return r
 }
 
-func curRune(b *Box) rune {
+func curRune(b *TextBox) rune {
 	_, back := rope.Split(b.text, b.dots[1].At[0])
 	rr := rope.NewReader(back)
 	r, _, err := rr.ReadRune()
@@ -414,7 +400,7 @@ func curRune(b *Box) rune {
 	return r
 }
 
-func selectForwardDelim(b *Box, open, close rune) {
+func selectForwardDelim(b *TextBox, open, close rune) {
 	nest := 1
 	_, back := rope.Split(b.text, b.dots[1].At[0])
 	end := rope.IndexFunc(back, func(r rune) bool {
@@ -432,7 +418,7 @@ func selectForwardDelim(b *Box, open, close rune) {
 	setDot(b, 1, b.dots[1].At[0], end+b.dots[1].At[0])
 }
 
-func selectReverseDelim(b *Box, open, close rune) {
+func selectReverseDelim(b *TextBox, open, close rune) {
 	nest := 1
 	front, _ := rope.Split(b.text, b.dots[1].At[0])
 	start := rope.LastIndexFunc(front, func(r rune) bool {
@@ -450,7 +436,7 @@ func selectReverseDelim(b *Box, open, close rune) {
 	setDot(b, 1, start+int64(utf8.RuneLen(open)), b.dots[1].At[0])
 }
 
-func selectLine(b *Box) {
+func selectLine(b *TextBox) {
 	front, back := rope.Split(b.text, b.dots[1].At[0])
 	start := rope.LastIndexFunc(front, func(r rune) bool { return r == '\n' })
 	if start < 0 {
@@ -467,7 +453,7 @@ func selectLine(b *Box) {
 	setDot(b, 1, start, end)
 }
 
-func selectWord(b *Box) {
+func selectWord(b *TextBox) {
 	front, back := rope.Split(b.text, b.dots[1].At[0])
 	var delim rune
 	start := rope.LastIndexFunc(front, func(r rune) bool {
@@ -508,7 +494,7 @@ func wordRune(r rune) bool {
 // Other non-zero values for x are currently ignored.
 //
 // Dir only handles key press events, not key releases.
-func (b *Box) Dir(x, y int) {
+func (b *TextBox) Dir(x, y int) {
 	switch {
 	case x == -1:
 		at := leftRight(b, "-")
@@ -535,7 +521,7 @@ func (b *Box) Dir(x, y int) {
 	}
 }
 
-func pageSize(b *Box) int {
+func pageSize(b *TextBox) int {
 	m := b.style.Face.Metrics()
 	h := (m.Height + m.Descent).Floor()
 	if h == 0 {
@@ -544,7 +530,7 @@ func pageSize(b *Box) int {
 	return b.size.Y / (4 * h)
 }
 
-func leftRight(b *Box, dir string) int64 {
+func leftRight(b *TextBox, dir string) int64 {
 	var at [2]int64
 	var err error
 	if b.dots[1].At[0] < b.dots[1].At[1] {
@@ -558,7 +544,7 @@ func leftRight(b *Box, dir string) int64 {
 	return at[0]
 }
 
-func upDown(b *Box, dir string) int64 {
+func upDown(b *TextBox, dir string) int64 {
 	if b.cursorCol < 0 {
 		b.cursorCol = cursorCol(b)
 	}
@@ -592,7 +578,7 @@ func upDown(b *Box, dir string) int64 {
 	return at[0]
 }
 
-func cursorCol(b *Box) int {
+func cursorCol(b *TextBox) int {
 	var n int
 	rr := rope.NewReverseReader(rope.Slice(b.text, 0, b.dots[1].At[0]))
 	for {
@@ -605,7 +591,7 @@ func cursorCol(b *Box) int {
 	return n
 }
 
-func scrollUp(b *Box, delta int) {
+func scrollUp(b *TextBox, delta int) {
 	if b.at == 0 {
 		return
 	}
@@ -629,7 +615,7 @@ func scrollUp(b *Box, delta int) {
 	dirtyLines(b)
 }
 
-func scrollDown(b *Box, delta int) {
+func scrollDown(b *TextBox, delta int) {
 	lines := b.lines()
 	for i := 0; i < delta; i++ {
 		if len(lines) > 0 {
@@ -656,7 +642,7 @@ func scrollDown(b *Box, delta int) {
 // The absolute value of the argument indicates the modifier key.
 // A positive value indicates the key was pressed.
 // A negative value indicates the key was released.
-func (b *Box) Mod(m int) {
+func (b *TextBox) Mod(m int) {
 	switch {
 	case m > 0 && m < len(b.mods):
 		b.mods[m] = true
@@ -685,7 +671,7 @@ const (
 //
 // If the rune is positive, the event is a key press,
 // if negative, a key release.
-func (b *Box) Rune(r rune) {
+func (b *TextBox) Rune(r rune) {
 	switch r {
 	case '\b':
 		if b.dots[1].At[0] == b.dots[1].At[1] {
@@ -710,7 +696,7 @@ func (b *Box) Rune(r rune) {
 }
 
 // Draw draws the text box to the image with the upper-left of the box at 0,0.
-func (b *Box) Draw(dirty bool, img draw.Image) {
+func (b *TextBox) Draw(dirty bool, img draw.Image) {
 	size := img.Bounds().Size()
 	if dirty || size != b.size {
 		b.size = size
@@ -737,7 +723,8 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 		at = at1
 	}
 	if y.Floor() < size.Y {
-		fillRect(img, b.style.BG, image.Rect(0, y.Floor(), size.X, size.Y))
+		r := image.Rect(0, y.Floor(), size.X, size.Y)
+		fillRect(img, b.style.BG, r.Add(img.Bounds().Min))
 	}
 
 	// Draw a cursor for empty text.
@@ -762,7 +749,7 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 	}
 }
 
-func drawLine(b *Box, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
+func drawLine(b *TextBox, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 	var prevRune rune
 	var x0 fixed.Int26_6
 	yb, y1 := y0+l.a, y0+l.h
@@ -770,7 +757,7 @@ func drawLine(b *Box, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 		x1 := x0 + s.w
 
 		bbox := image.Rect(x0.Floor(), y0.Floor(), x1.Floor(), y1.Floor())
-		fillRect(img, s.style.BG, bbox)
+		fillRect(img, s.style.BG, bbox.Add(img.Bounds().Min))
 
 		for _, r := range s.text {
 			if prevRune != 0 {
@@ -795,7 +782,7 @@ func drawLine(b *Box, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 	}
 	if xmax := img.Bounds().Size().X; x0.Floor() < xmax {
 		bbox := image.Rect(x0.Floor(), y0.Floor(), xmax, y1.Floor())
-		fillRect(img, b.style.BG, bbox)
+		fillRect(img, b.style.BG, bbox.Add(img.Bounds().Min))
 	}
 	if b.dots[1].At[0] == b.dots[1].At[1] &&
 		at == b.dots[1].At[0] &&
@@ -805,7 +792,7 @@ func drawLine(b *Box, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 	}
 }
 
-func drawGlyph(img draw.Image, style Style, x0, yb fixed.Int26_6, r rune) fixed.Int26_6 {
+func drawGlyph(img draw.Image, style TextStyle, x0, yb fixed.Int26_6, r rune) fixed.Int26_6 {
 	pt := fixed.Point26_6{X: x0, Y: yb}
 	dr, m, mp, adv, ok := style.Face.Glyph(pt, r)
 	if !ok {
@@ -817,20 +804,19 @@ func drawGlyph(img draw.Image, style Style, x0, yb fixed.Int26_6, r rune) fixed.
 	return adv
 }
 
-func drawCursor(b *Box, img draw.Image, x, y0, y1 fixed.Int26_6) {
+func drawCursor(b *TextBox, img draw.Image, x, y0, y1 fixed.Int26_6) {
 	if !b.showCursor {
 		return
 	}
 	r := image.Rect(x.Floor(), y0.Floor(), x.Floor()+4, y1.Floor())
-	fillRect(img, b.style.FG, r)
+	fillRect(img, b.style.FG, r.Add(img.Bounds().Min))
 }
 
 func fillRect(img draw.Image, c color.Color, r image.Rectangle) {
-	z := img.Bounds().Min
-	draw.Draw(img, r.Add(z), image.NewUniform(c), image.ZP, draw.Src)
+	draw.Draw(img, r, image.NewUniform(c), image.ZP, draw.Src)
 }
 
-func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
+func atPoint(b *TextBox, pt image.Point) (int64, image.Rectangle) {
 	lines := b.lines()
 	if len(lines) == 0 {
 		m := b.style.Face.Metrics()
@@ -860,13 +846,13 @@ func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
 
 	at0 := at
 	var s *span
-	var prevStyle Style
+	var prevTextStyle TextStyle
 	var prevRune rune
 	var x0, x1 fixed.Int26_6
 	for i := range l.spans {
 		s = &l.spans[i]
 		r, _ := utf8.DecodeRuneInString(s.text)
-		if prevStyle == s.style {
+		if prevTextStyle == s.style {
 			x0 += kern(s.style, prevRune, r)
 		}
 		x1 = x0 + s.w
@@ -875,7 +861,7 @@ func atPoint(b *Box, pt image.Point) (int64, image.Rectangle) {
 		}
 		at += int64(len(s.text))
 		prevRune, _ = utf8.DecodeLastRuneInString(s.text)
-		prevStyle = s.style
+		prevTextStyle = s.style
 		x0 = x1
 	}
 
@@ -909,7 +895,7 @@ func lastRune(l *line) rune {
 	return r
 }
 
-func setDot(b *Box, i int, start, end int64) {
+func setDot(b *TextBox, i int, start, end int64) {
 	if start < 0 || start > b.text.Len() {
 		panic("bad start")
 	}
@@ -928,7 +914,7 @@ func setDot(b *Box, i int, start, end int64) {
 	}
 }
 
-func showAddr(b *Box, at int64) {
+func showAddr(b *TextBox, at int64) {
 	bol, err := edit.Addr([2]int64{at, at}, "-0", b.text)
 	if err != nil {
 		panic(err.Error())
@@ -942,7 +928,7 @@ func showAddr(b *Box, at int64) {
 }
 
 // dirtyDot returns true if the dot is a point that is off screen.
-func dirtyDot(b *Box, dot [2]int64) bool {
+func dirtyDot(b *TextBox, dot [2]int64) bool {
 	if dot[0] < dot[1] {
 		dirtyLines(b)
 		return false
@@ -971,19 +957,19 @@ func dirtyDot(b *Box, dot [2]int64) bool {
 	return dot[0] < b.at || (y0+h).Floor() >= b.size.Y
 }
 
-func dirtyLines(b *Box) {
+func dirtyLines(b *TextBox) {
 	b.dirty = true
 	b._lines = b._lines[:0]
 }
 
-func (b *Box) lines() []line {
+func (b *TextBox) lines() []line {
 	if len(b._lines) == 0 {
 		reset(b)
 	}
 	return b._lines
 }
 
-func reset(b *Box) {
+func reset(b *TextBox) {
 	at := b.at
 	rs := bufio.NewReader(
 		rope.NewReader(rope.Slice(b.text, b.at, b.text.Len())),
@@ -996,7 +982,7 @@ func reset(b *Box) {
 		var x0, x fixed.Int26_6
 		m := b.style.Face.Metrics()
 		line := line{dirty: true, a: m.Ascent, h: m.Height + m.Descent}
-		style, stack, next := nextStyle(b.style, stack, at)
+		style, stack, next := nextTextStyle(b.style, stack, at)
 		for {
 			r, w, err := rs.ReadRune()
 			if err != nil {
@@ -1024,7 +1010,7 @@ func reset(b *Box) {
 				appendSpan(&line, x0, x, style, &text)
 				x0 = x
 				prevFace := style.Face
-				style, stack, next = nextStyle(b.style, stack, at)
+				style, stack, next = nextTextStyle(b.style, stack, at)
 				if prevFace != style.Face {
 					prevRune = 0
 				}
@@ -1038,7 +1024,7 @@ func reset(b *Box) {
 	}
 }
 
-func appendSpan(line *line, x0, x fixed.Int26_6, style Style, text *strings.Builder) {
+func appendSpan(line *line, x0, x fixed.Int26_6, style TextStyle, text *strings.Builder) {
 	m := style.Face.Metrics()
 	line.a = max(line.a, m.Ascent)
 	line.h = max(line.h, m.Height+m.Descent)
@@ -1050,7 +1036,7 @@ func appendSpan(line *line, x0, x fixed.Int26_6, style Style, text *strings.Buil
 	text.Reset()
 }
 
-func kern(style Style, prev, cur rune) fixed.Int26_6 {
+func kern(style TextStyle, prev, cur rune) fixed.Int26_6 {
 	if prev == 0 {
 		return 0
 	}
@@ -1064,7 +1050,7 @@ func max(a, b fixed.Int26_6) fixed.Int26_6 {
 	return b
 }
 
-func nextStyle(def Style, stack [][]Highlight, at int64) (Style, [][]Highlight, int64) {
+func nextTextStyle(def TextStyle, stack [][]Highlight, at int64) (TextStyle, [][]Highlight, int64) {
 	style, next := def, int64(-1)
 	for i := range stack {
 		for len(stack[i]) > 0 && stack[i][0].At[1] <= at {
@@ -1083,12 +1069,12 @@ func nextStyle(def Style, stack [][]Highlight, at int64) (Style, [][]Highlight, 
 		if hi.At[1] < next || next < 0 {
 			next = hi.At[1]
 		}
-		style = style.merge(hi.Style)
+		style = style.merge(hi.TextStyle)
 	}
 	return style, stack, next
 }
 
-func advance(b *Box, style Style, x fixed.Int26_6, r rune) fixed.Int26_6 {
+func advance(b *TextBox, style TextStyle, x fixed.Int26_6, r rune) fixed.Int26_6 {
 	switch r {
 	case '\n':
 		return fixed.I(b.size.X) - x
