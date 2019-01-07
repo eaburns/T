@@ -53,6 +53,7 @@ func NewSheet(c *Col, title string) *Sheet {
 // Body returns the sheet's body text box.
 func (s *Sheet) Body() *text.Box { return s.body }
 
+// Tick handles tic events.
 func (s *Sheet) Tick() bool {
 	redraw1 := s.body.Tick()
 	redraw2 := s.tag.Tick()
@@ -120,25 +121,23 @@ func resetTagHeight(s *Sheet, size image.Point) {
 }
 
 // Move handles movement events.
-func (s *Sheet) Move(pt image.Point) bool {
+func (s *Sheet) Move(pt image.Point) {
 	if s.Box == s.body {
 		pt.Y -= s.tagH
 	}
-	return s.Box.Move(pt)
+	s.Box.Move(pt)
 }
 
 // Click handles click events.
-func (s *Sheet) Click(pt image.Point, button int) (int, [2]int64, bool) {
-	var redraw bool
+func (s *Sheet) Click(pt image.Point, button int) (int, [2]int64) {
 	if button > 0 {
-		redraw = setSheetFocus(s, pt, button)
+		setSheetFocus(s, pt, button)
 	}
 
 	if s.Box == s.body {
 		pt.Y -= s.tagH
 	}
-	b, addr, r := s.Box.Click(pt, button)
-	return b, addr, r || redraw
+	return s.Box.Click(pt, button)
 }
 
 func setSheetFocus(s *Sheet, pt image.Point, button int) bool {

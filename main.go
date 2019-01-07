@@ -155,35 +155,31 @@ func poll(scr screen.Screen, w *win) {
 }
 
 func mouseEvent(w *win, e mouse.Event) {
-	var redraw bool
 	switch pt := image.Pt(int(e.X), int(e.Y)); {
 	case e.Button == mouse.ButtonWheelUp:
-		redraw = w.win.Wheel(0, 1)
+		w.win.Wheel(0, 1)
 
 	case e.Button == mouse.ButtonWheelDown:
-		redraw = w.win.Wheel(0, -1)
+		w.win.Wheel(0, -1)
 
 	case e.Button == mouse.ButtonWheelLeft:
-		redraw = w.win.Wheel(-1, 0)
+		w.win.Wheel(-1, 0)
 
 	case e.Button == mouse.ButtonWheelRight:
-		redraw = w.win.Wheel(1, 0)
+		w.win.Wheel(1, 0)
 
 	case e.Direction == mouse.DirNone:
-		redraw = w.win.Move(pt)
+		w.win.Move(pt)
 
 	case e.Direction == mouse.DirPress:
-		redraw = w.win.Click(pt, int(e.Button))
+		w.win.Click(pt, int(e.Button))
 
 	case e.Direction == mouse.DirRelease:
-		redraw = w.win.Click(pt, -int(e.Button))
+		w.win.Click(pt, -int(e.Button))
 
 	case e.Direction == mouse.DirStep:
-		redraw = w.win.Click(pt, int(e.Button))
-		redraw = w.win.Click(pt, -int(e.Button)) || redraw
-	}
-	if redraw {
-		w.Send(paint.Event{})
+		w.win.Click(pt, int(e.Button))
+		w.win.Click(pt, -int(e.Button))
 	}
 }
 
@@ -206,9 +202,7 @@ func keyEvent(w *win, mods [4]bool, e key.Event) [4]bool {
 	}
 	if e.Rune > 0 {
 		if e.Direction == key.DirPress {
-			if w.win.Rune(e.Rune) {
-				w.Send(paint.Event{})
-			}
+			w.win.Rune(e.Rune)
 		}
 		return mods
 	}
@@ -228,37 +222,33 @@ var dirKeyCode = map[key.Code]bool{
 }
 
 func dirKey(w *win, e key.Event) {
-	var redraw bool
 	switch e.Code {
 	case key.CodeUpArrow:
-		redraw = w.win.Dir(0, -1)
+		w.win.Dir(0, -1)
 
 	case key.CodeDownArrow:
-		redraw = w.win.Dir(0, 1)
+		w.win.Dir(0, 1)
 
 	case key.CodeLeftArrow:
-		redraw = w.win.Dir(-1, 0)
+		w.win.Dir(-1, 0)
 
 	case key.CodeRightArrow:
-		redraw = w.win.Dir(1, 0)
+		w.win.Dir(1, 0)
 
 	case key.CodePageUp:
-		redraw = w.win.Dir(0, -2)
+		w.win.Dir(0, -2)
 
 	case key.CodePageDown:
-		redraw = w.win.Dir(0, 2)
+		w.win.Dir(0, 2)
 
 	case key.CodeHome:
-		redraw = w.win.Dir(0, math.MinInt16)
+		w.win.Dir(0, math.MinInt16)
 
 	case key.CodeEnd:
-		redraw = w.win.Dir(0, math.MaxInt16)
+		w.win.Dir(0, math.MaxInt16)
 
 	default:
 		panic("impossible")
-	}
-	if redraw {
-		w.Send(paint.Event{})
 	}
 }
 
@@ -280,9 +270,7 @@ func modKey(w *win, mods [4]bool, e key.Event) [4]bool {
 			if !newMods[i] {
 				m = -m
 			}
-			if w.win.Mod(m) {
-				w.Send(paint.Event{})
-			}
+			w.win.Mod(m)
 			mods = newMods
 			break
 		}

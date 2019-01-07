@@ -67,6 +67,7 @@ type Box struct {
 	syntax      []Highlight  // syntax highlighting
 	highlighter Highlighter  // syntax highlighter
 
+	dirty  bool
 	_lines []line
 	now    func() time.Time
 }
@@ -232,12 +233,11 @@ func (b *Box) Focus(focus bool) {
 // fast enough to drive cursor blinking and mouse-drag scolling.
 func (b *Box) Tick() bool {
 	now := b.now()
-	var redraw bool
+	redraw := b.dirty
 	if b.focus && b.dots[1].At[0] == b.dots[1].At[1] && !b.blinkTime.After(now) {
 		b.blinkTime = now.Add(blinkDuration)
 		b.showCursor = !b.showCursor
 		dirtyDot(b, b.dots[1].At)
-		redraw = true
 	}
 	if b.button == 1 &&
 		!b.dragScrollTime.After(now) {
@@ -252,12 +252,10 @@ func (b *Box) Tick() bool {
 			scrollUp(b, 1)
 			b.Move(b.pt)
 			b.dragScrollTime = now.Add(dragScrollDuration)
-			redraw = true
 		case b.pt.Y >= ymax.Floor() && atMax < b.text.Len():
 			scrollDown(b, 1)
 			b.Move(b.pt)
 			b.dragScrollTime = now.Add(dragScrollDuration)
-			redraw = true
 		}
 	}
 	return redraw
@@ -265,10 +263,10 @@ func (b *Box) Tick() bool {
 
 // Move handles the event of the mouse cursor moving to a point
 // and returns whether the text box image needs to be redrawn.
-func (b *Box) Move(pt image.Point) bool {
+func (b *Box) Move(pt image.Point) {
 	b.pt = pt
 	if b.button <= 0 || b.button >= len(b.dots) || pt.In(b.dragBox) {
-		return false
+		return
 	}
 	b.dragAt, b.dragBox = atPoint(b, pt)
 	if b.clickAt <= b.dragAt {
@@ -276,7 +274,6 @@ func (b *Box) Move(pt image.Point) bool {
 	} else {
 		setDot(b, b.button, b.dragAt, b.clickAt)
 	}
-	return true
 }
 
 // Wheel handles the event of the mouse wheel rolling
@@ -285,10 +282,10 @@ func (b *Box) Move(pt image.Point) bool {
 // 	+y is roll down.
 // 	-x is roll left.
 // 	+x is roll right.
-func (b *Box) Wheel(x, y int) bool {
+func (b *Box) Wheel(x, y int) {
 	now := b.now()
 	if b.wheelTime.After(now) {
-		return false
+		return
 	}
 	b.wheelTime = now.Add(wheelScrollDuration)
 	switch {
@@ -297,7 +294,6 @@ func (b *Box) Wheel(x, y int) bool {
 	case y > 0:
 		scrollUp(b, 1)
 	}
-	return true
 }
 
 // Click handles a mouse button press or release event.
@@ -310,60 +306,55 @@ func (b *Box) Wheel(x, y int) bool {
 // The absolute value of the argument indicates the mouse button.
 // A positive value indicates the button was pressed.
 // A negative value indicates the button was released.
-func (b *Box) Click(pt image.Point, button int) (int, [2]int64, bool) {
+func (b *Box) Click(pt image.Point, button int) (int, [2]int64) {
 	b.pt = pt
-	var addr [2]int64
-	var redraw bool
 	switch {
 	case b.button > 0 && button > 0:
 		// b.button/button mouse chord; ignore it for now.
+		return button, [2]int64{}
 
 	case b.button > 0 && button == -b.button:
-		button, addr, redraw = unclick(b)
+		return unclick(b)
 
 	case b.button == 0 && button == 1 && b.mods[2]:
 		button = 2
-		redraw = click(b, 2)
 
 	case b.button == 0 && button == 1 && b.mods[3]:
 		button = 3
-		redraw = click(b, 3)
 
 	case b.button != 1 && button == -1: // mod-button unclick
-		button, addr, redraw = unclick(b)
-
-	case b.button == 0 && button > 0:
-		redraw = click(b, button)
+		return unclick(b)
 	}
-	return button, addr, redraw
+	if button > 0 {
+		click(b, button)
+	}
+	return button, [2]int64{}
 }
 
-func unclick(b *Box) (int, [2]int64, bool) {
+func unclick(b *Box) (int, [2]int64) {
 	button := b.button
 	b.button = 0
 	dot := b.dots[button].At
 	if button != 1 {
 		setDot(b, button, 0, 0)
-		return button, dot, true
 	}
-	return button, dot, false
+	return button, dot
 }
 
-func click(b *Box, button int) bool {
+func click(b *Box, button int) {
 	b.button = button
 	if button == 1 {
 		if b.now().Sub(b.clickTime) < doubleClickDuration {
-			return doubleClick(b)
+			doubleClick(b)
+			return
 		}
 		b.clickTime = b.now()
 	}
-
 	b.clickAt, b.dragBox = atPoint(b, b.pt)
 	setDot(b, button, b.clickAt, b.clickAt)
 	if button == 1 {
 		b.cursorCol = -1
 	}
-	return true
 }
 
 var delim = [][2]rune{
@@ -378,30 +369,29 @@ var delim = [][2]rune{
 	{'“', '”'},
 }
 
-func doubleClick(b *Box) bool {
+func doubleClick(b *Box) {
 	prev := prevRune(b)
 	for _, ds := range delim {
 		if ds[0] == prev {
 			selectForwardDelim(b, ds[0], ds[1])
-			return true
+			return
 		}
 	}
 	cur := curRune(b)
 	for _, ds := range delim {
 		if ds[1] == cur {
 			selectReverseDelim(b, ds[1], ds[0])
-			return true
+			return
 		}
 	}
 	if prev == -1 || prev == '\n' || cur == -1 || cur == '\n' {
 		selectLine(b)
-		return true
+		return
 	}
 	if wordRune(cur) {
 		selectWord(b)
-		return true
+		return
 	}
-	return false
 }
 
 func prevRune(b *Box) rune {
@@ -518,7 +508,7 @@ func wordRune(r rune) bool {
 // Other non-zero values for x are currently ignored.
 //
 // Dir only handles key press events, not key releases.
-func (b *Box) Dir(x, y int) bool {
+func (b *Box) Dir(x, y int) {
 	switch {
 	case x == -1:
 		at := leftRight(b, "-")
@@ -542,10 +532,7 @@ func (b *Box) Dir(x, y int) bool {
 		scrollUp(b, pageSize(b))
 	case y > 0:
 		scrollDown(b, pageSize(b))
-	default:
-		return false
 	}
-	return true
 }
 
 func pageSize(b *Box) int {
@@ -669,24 +656,16 @@ func scrollDown(b *Box, delta int) {
 // The absolute value of the argument indicates the modifier key.
 // A positive value indicates the key was pressed.
 // A negative value indicates the key was released.
-func (b *Box) Mod(m int) bool {
+func (b *Box) Mod(m int) {
 	switch {
 	case m > 0 && m < len(b.mods):
 		b.mods[m] = true
 	case m < 0 && -m < len(b.mods):
 		b.mods[-m] = false
 	}
-
 	if b.button > 0 {
-		// This must be a chord,
-		// and chords ignore
-		// the clicked address,
-		// so this is OK.
-		_, _, redraw := b.Click(b.pt, m)
-		return redraw
+		b.Click(b.pt, m)
 	}
-
-	return false
 }
 
 const (
@@ -706,7 +685,7 @@ const (
 //
 // If the rune is positive, the event is a key press,
 // if negative, a key release.
-func (b *Box) Rune(r rune) bool {
+func (b *Box) Rune(r rune) {
 	switch r {
 	case '\b':
 		if b.dots[1].At[0] == b.dots[1].At[1] {
@@ -728,7 +707,6 @@ func (b *Box) Rune(r rune) bool {
 		ed(b, ".c/"+string([]rune{r}))
 	}
 	setDot(b, 1, b.dots[1].At[1], b.dots[1].At[1])
-	return true
 }
 
 // Draw draws the text box to the image with the upper-left of the box at 0,0.
@@ -738,6 +716,10 @@ func (b *Box) Draw(dirty bool, img draw.Image) {
 		b.size = size
 		dirtyLines(b)
 	}
+	if !b.dirty {
+		return
+	}
+	b.dirty = false
 	at := b.at
 	lines := b.lines()
 	var y fixed.Int26_6
@@ -965,6 +947,7 @@ func dirtyDot(b *Box, dot [2]int64) bool {
 		dirtyLines(b)
 		return false
 	}
+	b.dirty = true
 	at0 := b.at
 	lines := b.lines()
 	var y0 fixed.Int26_6
@@ -989,6 +972,7 @@ func dirtyDot(b *Box, dot [2]int64) bool {
 }
 
 func dirtyLines(b *Box) {
+	b.dirty = true
 	b._lines = b._lines[:0]
 }
 

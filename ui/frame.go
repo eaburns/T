@@ -50,10 +50,10 @@ func (f *frame) Resize(size image.Point) {
 }
 
 // Move handles mouse movement events.
-func (f *frame) Move(pt image.Point) bool {
-	return f.Row.Move(pt.Sub(image.Pt(f.px, f.px)))
+func (f *frame) Move(pt image.Point) {
+	f.Row.Move(pt.Sub(image.Pt(f.px, f.px)))
 }
 
-func (f *frame) Click(pt image.Point, button int) (int, [2]int64, bool) {
+func (f *frame) Click(pt image.Point, button int) (int, [2]int64) {
 	return f.Row.Click(pt.Sub(image.Pt(f.px, f.px)), button)
 }

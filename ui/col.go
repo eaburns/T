@@ -154,21 +154,20 @@ func (c *Col) Resize(size image.Point) {
 }
 
 // Move handles mouse move events.
-func (c *Col) Move(pt image.Point) bool {
+func (c *Col) Move(pt image.Point) {
 	if c.resizing >= 0 {
 		switch i := colIndex(c); {
 		case i > 0 && pt.X < c.minHeight:
 			moveRow(c.win, c.resizing+1, c, c.win.cols[i-1], pt.Y)
-			return true
 		case i < len(c.win.cols)-1 && pt.X > c.size.X+c.minHeight:
 			moveRow(c.win, c.resizing+1, c, c.win.cols[i+1], pt.Y)
-			return true
 		default:
-			return resizeRow(c, pt)
+			resizeRow(c, pt)
 		}
+		return
 	}
 	pt.Y -= y0(c)
-	return c.Row.Move(pt)
+	c.Row.Move(pt)
 }
 
 // colIndex returns the index of the Col its Win's cols array.
@@ -213,7 +212,7 @@ func moveRow(w *Win, ri int, src, dst *Col, y int) {
 	w.Col = dst
 }
 
-func resizeRow(c *Col, pt image.Point) bool {
+func resizeRow(c *Col, pt image.Point) {
 	// Try to center the mouse on line 1.
 	newY1 := pt.Y - c.minHeight/2
 
@@ -247,15 +246,13 @@ func resizeRow(c *Col, pt image.Point) bool {
 
 	if newY1 < y0-c.minHeight || newY1 > y2+c.minHeight {
 		moveRow(c.win, c.resizing+1, c, c, pt.Y)
-		return true
+		return
 	}
 
-	if c.heights[c.resizing] == frac {
-		return false
+	if c.heights[c.resizing] != frac {
+		c.heights[c.resizing] = frac
+		c.Resize(c.size)
 	}
-	c.heights[c.resizing] = frac
-	c.Resize(c.size)
-	return true
 }
 
 func clampFrac(f float64) float64 {
@@ -270,10 +267,10 @@ func clampFrac(f float64) float64 {
 }
 
 // Click handles click events.
-func (c *Col) Click(pt image.Point, button int) bool {
+func (c *Col) Click(pt image.Point, button int) {
 	if c.resizing >= 0 && button == -1 {
 		c.resizing = -1
-		return false
+		return
 	}
 	if button == 1 {
 		for i := range c.rows[:len(c.rows)-1] {
@@ -287,18 +284,16 @@ func (c *Col) Click(pt image.Point, button int) bool {
 			if pt.In(handle) {
 				// TODO: set focus on the resized row.
 				c.resizing = i
-				return false
+				return
 			}
 		}
 	}
 
-	var redraw bool
 	if button > 0 {
-		redraw = setColFocus(c, pt, button)
+		setColFocus(c, pt, button)
 	}
 	pt.Y -= y0(c)
-	_, _, redraw1 := c.Row.Click(pt, button)
-	return redraw1 || redraw
+	c.Row.Click(pt, button)
 }
 
 func y0(c *Col) int {

@@ -84,15 +84,16 @@ func (w *Win) Resize(size image.Point) {
 }
 
 // Move handles mouse move events.
-func (w *Win) Move(pt image.Point) bool {
+func (w *Win) Move(pt image.Point) {
 	if w.resizing >= 0 {
 		// Center the pointer horizontally on the handle.
 		x := pt.X + w.cols[w.resizing].HandleBounds().Dx()/2
-		return resizeCol(w, x)
+		resizeCol(w, x)
+		return
 	}
 
 	pt.X -= x0(w)
-	return w.Col.Move(pt)
+	w.Col.Move(pt)
 }
 
 func resizeCol(w *Win, x int) bool {
@@ -121,10 +122,10 @@ func resizeCol(w *Win, x int) bool {
 }
 
 // Click handles click events.
-func (w *Win) Click(pt image.Point, button int) bool {
+func (w *Win) Click(pt image.Point, button int) {
 	if w.resizing >= 0 && button == -1 {
 		w.resizing = -1
-		return false
+		return
 	}
 	if button == 1 {
 		var x0 int
@@ -133,18 +134,17 @@ func (w *Win) Click(pt image.Point, button int) bool {
 			if pt.In(handle) {
 				// TODO: set focus on the resized column.
 				w.resizing = i
-				return false
+				return
 			}
 			x0 = int(w.widths[i] * float64(w.size.X))
 		}
 	}
 
-	var redraw bool
 	if button > 0 {
-		redraw = setWinFocus(w, pt, button)
+		setWinFocus(w, pt, button)
 	}
 	pt.X -= x0(w)
-	return w.Col.Click(pt, button) || redraw
+	w.Col.Click(pt, button)
 }
 
 func x0(w *Win) int {
