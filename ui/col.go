@@ -62,6 +62,17 @@ func (c *Col) Add(row Row) {
 	c.Row = row
 }
 
+// Tick handles tick events.
+func (c *Col) Tick() bool {
+	var redraw bool
+	for _, r := range c.rows {
+		if r.Tick() {
+			redraw = true
+		}
+	}
+	return redraw
+}
+
 // HandleBounds returns the bounding box of the handle.
 func (c *Col) HandleBounds() image.Rectangle {
 	y1 := int(c.heights[0] * float64(c.size.Y))

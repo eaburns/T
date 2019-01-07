@@ -42,6 +42,17 @@ func NewWin(dpi float32) *Win {
 	return w
 }
 
+// Tick handles tick events.
+func (w *Win) Tick() bool {
+	var redraw bool
+	for _, c := range w.cols {
+		if c.Tick() {
+			redraw = true
+		}
+	}
+	return redraw
+}
+
 // Draw draws the window.
 func (w *Win) Draw(dirty bool, img draw.Image) {
 	if w.size != img.Bounds().Size() {

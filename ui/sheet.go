@@ -53,6 +53,12 @@ func NewSheet(c *Col, title string) *Sheet {
 // Body returns the sheet's body text box.
 func (s *Sheet) Body() *text.Box { return s.body }
 
+func (s *Sheet) Tick() bool {
+	redraw1 := s.body.Tick()
+	redraw2 := s.tag.Tick()
+	return redraw1 || redraw2
+}
+
 // Draw draws the sheet.
 func (s *Sheet) Draw(dirty bool, drawImg draw.Image) {
 	img := drawImg.(*image.RGBA)
