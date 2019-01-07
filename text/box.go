@@ -142,6 +142,17 @@ func (b *Box) SetText(text rope.Rope) {
 	dirtyLines(b)
 }
 
+// Dot returns the ith dot.
+// The dots are numbered 1, 2, and 3.
+// They correspond to 1-, 2-, and 3-clicking.
+// If i is not 1, 2, or 3, then [2]int64{} is returned.
+func (b *Box) Dot(i int) [2]int64 {
+	if i < 1 || i >= len(b.dots) {
+		return [2]int64{}
+	}
+	return b.dots[i].At
+}
+
 // Highlighter computes syntax highlighting when the text is changed.
 type Highlighter interface {
 	// Update returns the updated syntax highlighting,
