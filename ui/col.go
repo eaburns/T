@@ -30,7 +30,7 @@ func NewCol(w *Win) *Col {
 		}
 	)
 	bg := NewTextBox(w, bodyTextStyles, image.ZP)
-	bg.SetText(rope.New("Del Add\n"))
+	bg.SetText(rope.New(colText))
 	return &Col{
 		win:       w,
 		minHeight: w.lineHeight + 2*int(padPt*w.dpi/72.0+0.5),

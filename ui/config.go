@@ -13,6 +13,12 @@ const (
 
 	// minColPt is the minimum points in width of a column on resize.
 	minColPt = 10
+
+	// colText is the default column background text.
+	colText = "AddCol DelCol Add\n"
+
+	// tagText is the default tag text.
+	tagText = " | Del"
 )
 
 var (

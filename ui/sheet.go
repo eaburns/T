@@ -36,7 +36,7 @@ func NewSheet(w *Win, title string) *Sheet {
 		}
 	)
 	tag := NewTextBox(w, tagTextStyles, image.ZP)
-	tag.SetText(rope.New(title + " | Del Undo Put"))
+	tag.SetText(rope.New(title + tagText))
 	body := NewTextBox(w, bodyTextStyles, image.ZP)
 	s := &Sheet{
 		tag:     tag,
