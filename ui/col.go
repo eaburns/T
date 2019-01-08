@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/draw"
+	"unicode"
 
 	"github.com/eaburns/T/rope"
 )
@@ -309,25 +310,37 @@ func (c *Col) Click(pt image.Point, button int) {
 	pt.Y -= y0(c)
 	button, addr := c.Row.Click(pt, button)
 	if button == -2 {
-		txt := getText(c.Row)
-		if txt == nil {
-			return
-		}
-		cmd := rope.Slice(txt, addr[0], addr[1]).String()
-		switch cmd {
-		case "Add":
-			c.Add(NewSheet(c.win, ""))
-		case "AddCol":
-			c.win.Add()
-		case "Del":
-			c.Del(c.Row)
-		case "DelCol":
-			c.win.Del(c)
+		if tb := getTextBox(c.Row); tb != nil {
+			execCmd(c, getSheet(c.Row), getCmd(tb, addr))
 		}
 	}
 }
 
-func getText(r Row) rope.Rope {
+func getCmd(tb *TextBox, addr [2]int64) string {
+	if addr[0] < addr[1] {
+		return rope.Slice(tb.text, addr[0], addr[1]).String()
+	}
+	if dot := tb.dots[1].At; dot[0] <= addr[0] && addr[0] < dot[1] {
+		return rope.Slice(tb.text, dot[0], dot[1]).String()
+	}
+
+	front, back := rope.Split(tb.text, addr[0])
+	start := rope.LastIndexFunc(front, unicode.IsSpace)
+	if start < 0 {
+		start = 0
+	} else {
+		start++
+	}
+	end := rope.IndexFunc(back, unicode.IsSpace)
+	if end < 0 {
+		end = tb.text.Len()
+	} else {
+		end += addr[0]
+	}
+	return rope.Slice(tb.text, start, end).String()
+}
+
+func getTextBox(r Row) *TextBox {
 	if f, ok := r.(*handleFrame); ok {
 		r = f.Row
 	}
@@ -336,12 +349,25 @@ func getText(r Row) rope.Rope {
 	}
 	switch r := r.(type) {
 	case *Sheet:
-		return r.TextBox.Text()
+		return r.TextBox
 	case *TextBox:
-		return r.Text()
+		return r
 	default:
 		return nil
 	}
+}
+
+func getSheet(r Row) *Sheet {
+	if f, ok := r.(*handleFrame); ok {
+		r = f.Row
+	}
+	if f, ok := r.(*frame); ok {
+		r = f.Row
+	}
+	if r, ok := r.(*Sheet); ok {
+		return r
+	}
+	return nil
 }
 
 func y0(c *Col) int {
