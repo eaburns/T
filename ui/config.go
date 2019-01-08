@@ -9,7 +9,7 @@ import (
 
 const (
 	// padPt is the point-width of padding around rows.
-	padPt = 1
+	padPt = 0.5
 
 	// minColPt is the minimum points in width of a column on resize.
 	minColPt = 10
@@ -32,13 +32,16 @@ var (
 	fg = color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF}
 
 	// colBG is the column background color.
-	colBG = color.RGBA{R: 0xEA, G: 0xEA, B: 0xEA, A: 0xFF}
+	colBG = color.White
+
+	// padColor is the padding color.
+	padColor = color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF}
 
 	// tagBG is the tag background color.
 	tagBG = color.RGBA{R: 0xCF, G: 0xE0, B: 0xF7, A: 0xFF}
 
 	// bodyBG is a body background color.
-	bodyBG = color.RGBA{R: 0xFE, G: 0xF0, B: 0xE6, A: 0xFF}
+	bodyBG = color.RGBA{R: 0xFA, G: 0xF0, B: 0xE6, A: 0xFF}
 
 	// hiBG1, hiBG2, and hiBG2 are the background colors
 	// of 1-, 2-, and 3-click highlighted text.

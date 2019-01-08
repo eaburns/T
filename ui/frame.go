@@ -30,7 +30,7 @@ func (f *handleFrame) HandleBounds() image.Rectangle {
 
 func (f *frame) Draw(dirty bool, drawImg draw.Image) {
 	img := drawImg.(*image.RGBA)
-	strokeRect(img, colBG, f.px, img.Bounds())
+	strokeRect(img, padColor, f.px, img.Bounds())
 	b := img.Bounds().Inset(f.px)
 	f.Row.Draw(dirty, img.SubImage(b).(*image.RGBA))
 }
