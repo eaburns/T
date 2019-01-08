@@ -13,7 +13,6 @@ type Win struct {
 	dpi        float32
 	face       font.Face // default font face
 	lineHeight int
-	minWidth   int
 	size       image.Point
 	cols       []*Col
 	widths     []float64 // frac of width
@@ -34,7 +33,6 @@ func NewWin(dpi float32) *Win {
 		dpi:        dpi,
 		face:       face,
 		lineHeight: h,
-		minWidth:   int(dpi * minColPt / 72.0),
 		resizing:   -1,
 	}
 	w.cols = []*Col{NewCol(w)}
@@ -87,32 +85,42 @@ func (w *Win) Tick() bool {
 }
 
 // Draw draws the window.
-func (w *Win) Draw(dirty bool, img draw.Image) {
+func (w *Win) Draw(dirty bool, drawImg draw.Image) {
+	img := drawImg.(*image.RGBA)
 	if w.size != img.Bounds().Size() {
 		w.Resize(img.Bounds().Size())
 	}
-
-	r := img.Bounds()
-	x0 := r.Min.X
-	r.Max.X = x0
-	fillRect(img, colBG, r)
-
-	r.Min.X = r.Max.X
 	for i, c := range w.cols {
-		r.Max.X = x0 + int(w.widths[i]*float64(w.size.X))
-		c.Draw(dirty, img.(*image.RGBA).SubImage(r).(*image.RGBA))
-		r.Min.X = r.Max.X
+		r := img.Bounds()
+		r.Min.X = img.Bounds().Min.X + x0(w, i)
+		r.Max.X = img.Bounds().Min.X + x1(w, i)
+		c.Draw(dirty, img.SubImage(r).(*image.RGBA))
+		if i < len(w.cols)-1 {
+			r.Min.X = r.Max.X
+			r.Max.X += framePx
+			fillRect(img, frameColor, r)
+		}
 	}
 }
 
 // Resize handles resize events.
 func (w *Win) Resize(size image.Point) {
 	w.size = size
-	var x0 int
+
+	if nc := len(w.cols); int(dx(w)) < nc*w.lineHeight+nc*framePx {
+		// Too small to fit everything.
+		// Space out as much as we can,
+		// so if the window grows,
+		// everything is in a good place.
+		w.widths[0] = 0.0
+		for i := 1; i < nc; i++ {
+			w.widths[i] = w.widths[i-1] + 1.0/float64(nc)
+		}
+	}
+	w.widths[len(w.widths)-1] = 1.0
+
 	for i, c := range w.cols {
-		x1 := int(w.widths[i] * float64(w.size.X))
-		c.Resize(image.Pt(x1-x0, w.size.Y))
-		x0 = x1
+		c.Resize(image.Pt(x1(w, i)-x0(w, i), w.size.Y))
 	}
 }
 
@@ -125,33 +133,32 @@ func (w *Win) Move(pt image.Point) {
 		return
 	}
 
-	pt.X -= x0(w)
+	pt.X -= x0(w, focusedCol(w))
 	w.Col.Move(pt)
 }
 
-func resizeCol(w *Win, x int) bool {
-	newFrac := float64(x) / float64(w.size.X)
+func resizeCol(w *Win, x int) {
+	dx := dx(w)
+	newFrac := float64(x) / dx
 
 	// Don't resize if either resized col would get too small.
-	var x0 int
+	newX := int(newFrac * dx)
+	var prev int
 	if w.resizing > 0 {
-		x0 = int(w.widths[w.resizing-1] * float64(w.size.X))
+		prev = x0(w, w.resizing)
 	}
-	newX1 := int(newFrac * float64(w.size.X))
-	if newX1-x0 < w.minWidth {
-		newFrac = float64(x0+w.minWidth) / float64(w.size.X)
+	if newX-prev-framePx < w.lineHeight {
+		newFrac = float64(prev+w.lineHeight) / dx
 	}
-	x2 := int(w.widths[w.resizing+1] * float64(w.size.X))
-	if x2-newX1 < w.minWidth {
-		newFrac = float64(x2-w.minWidth) / float64(w.size.X)
+	next := x1(w, w.resizing+1)
+	if next-newX-framePx < w.lineHeight {
+		newFrac = float64(next-w.lineHeight-framePx) / dx
 	}
 
-	if w.widths[w.resizing] == newFrac {
-		return false
+	if w.widths[w.resizing] != newFrac {
+		w.widths[w.resizing] = newFrac
+		w.Resize(w.size)
 	}
-	w.widths[w.resizing] = newFrac
-	w.Resize(w.size)
-	return true
 }
 
 // Click handles click events.
@@ -161,34 +168,21 @@ func (w *Win) Click(pt image.Point, button int) {
 		return
 	}
 	if button == 1 {
-		var x0 int
 		for i, c := range w.cols[:len(w.cols)-1] {
-			handle := c.HandleBounds().Add(image.Pt(x0, 0))
+			handle := c.HandleBounds().Add(image.Pt(x0(w, i), 0))
 			if pt.In(handle) {
 				// TODO: set focus on the resized column.
 				w.resizing = i
 				return
 			}
-			x0 = int(w.widths[i] * float64(w.size.X))
 		}
 	}
 
 	if button > 0 {
 		setWinFocus(w, pt, button)
 	}
-	pt.X -= x0(w)
+	pt.X -= x0(w, focusedCol(w))
 	w.Col.Click(pt, button)
-}
-
-func x0(w *Win) int {
-	var x0 int
-	for i, c := range w.cols {
-		if c == w.Col {
-			break
-		}
-		x0 = int(w.widths[i] * float64(w.size.X))
-	}
-	return x0
 }
 
 func setWinFocus(w *Win, pt image.Point, button int) bool {
@@ -198,8 +192,7 @@ func setWinFocus(w *Win, pt image.Point, button int) bool {
 	var i int
 	var c *Col
 	for i, c = range w.cols {
-		x1 := int(w.widths[i] * float64(w.size.X))
-		if pt.X < x1 {
+		if pt.X < x1(w, i) {
 			break
 		}
 	}
@@ -229,4 +222,24 @@ func (w *Win) Mod(m int) {
 		w.mods[-m] = false
 	}
 	w.Col.Mod(m)
+}
+
+func x0(w *Win, i int) int {
+	if i == 0 {
+		return 0
+	}
+	return x1(w, i-1) + framePx
+}
+
+func x1(w *Win, i int) int { return int(w.widths[i] * dx(w)) }
+
+func dx(w *Win) float64 { return float64(w.size.X) }
+
+func focusedCol(w *Win) int {
+	for i, c := range w.cols {
+		if c == w.Col {
+			return i
+		}
+	}
+	return 0
 }

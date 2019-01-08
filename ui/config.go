@@ -8,11 +8,9 @@ import (
 )
 
 const (
-	// padPt is the point-width of padding around rows.
-	padPt = 0.5
-
-	// minColPt is the minimum points in width of a column on resize.
-	minColPt = 10
+	// framePx is the pixel width of the lines
+	// drawn between columns and rows.
+	framePx = 1
 
 	// colText is the default column background text.
 	colText = "AddCol DelCol Add\n"
@@ -35,7 +33,11 @@ var (
 	colBG = color.White
 
 	// padColor is the padding color.
+	// TODO: remove padColor once it's replaced by frameColor.
 	padColor = color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF}
+
+	// frameColor is the lines drawn between columns and rows.
+	frameColor = fg
 
 	// tagBG is the tag background color.
 	tagBG = color.RGBA{R: 0xCF, G: 0xE0, B: 0xF7, A: 0xFF}
