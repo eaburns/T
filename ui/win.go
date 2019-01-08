@@ -46,8 +46,13 @@ func NewWin(dpi float32) *Win {
 // Add adds a new column to the window and returns it.
 func (w *Win) Add() *Col {
 	col := NewCol(w)
-	w.cols = append([]*Col{col}, w.cols...)
-	w.widths = append([]float64{w.widths[0] / 2}, w.widths...)
+	f := 0.5
+	if n := len(w.widths); n > 1 {
+		f = (w.widths[n-2] + w.widths[n-1]) / 2.0
+	}
+	w.cols = append(w.cols, col)
+	w.widths[len(w.widths)-1] = f
+	w.widths = append(w.widths, 1.0)
 	w.Resize(w.size)
 	return col
 }
