@@ -196,6 +196,9 @@ func colIndex(c *Col) int {
 
 func moveRow(w *Win, ri int, src, dst *Col, y int) {
 	e := src.rows[ri]
+	if src.Row != e {
+		panic("impossible")
+	}
 
 	// Remove the row.
 	src.rows = append(src.rows[:ri], src.rows[ri+1:]...)
@@ -211,15 +214,13 @@ func moveRow(w *Win, ri int, src, dst *Col, y int) {
 	// TODO: only move a sheet if the dst can fit it.
 	dst.rows = append(dst.rows[:ri+1], append([]Row{e}, dst.rows[ri+1:]...)...)
 	dst.heights = append(dst.heights[:ri], append([]float64{frac}, dst.heights[ri:]...)...)
+
 	if dst != src {
 		src.resizing = -1
 		src.Row = src.rows[0]
-		src.Focus(false)
 		src.Resize(src.size)
-
-		dst.Focus(true)
+		dst.Row = e
 	}
-	dst.Row = e
 	dst.resizing = ri
 	dst.Resize(dst.size)
 	w.Col = dst
@@ -297,7 +298,11 @@ func (c *Col) Click(pt image.Point, button int) {
 			}
 			handle := handler.HandleBounds().Add(image.Pt(0, y0(c, i)))
 			if pt.In(handle) {
-				// TODO: set focus on the resized row.
+				if c.Row != r {
+					c.Row.Focus(false)
+					r.Focus(true)
+					c.Row = r
+				}
 				c.resizing = i - 1
 				return
 			}

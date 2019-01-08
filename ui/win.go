@@ -171,7 +171,11 @@ func (w *Win) Click(pt image.Point, button int) {
 		for i, c := range w.cols[:len(w.cols)-1] {
 			handle := c.HandleBounds().Add(image.Pt(x0(w, i), 0))
 			if pt.In(handle) {
-				// TODO: set focus on the resized column.
+				if w.Col != c {
+					w.Col.Focus(false)
+					c.Focus(true)
+					w.Col = c
+				}
 				w.resizing = i
 				return
 			}
