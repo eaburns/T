@@ -20,6 +20,14 @@ func IndexFunc(ro Rope, f func(r rune) bool) int64 {
 	}
 }
 
+// IndexRune returns the byte index
+// of the first occurrence of r in the rope.
+// If the rope does not contain r,
+// IndexRune returns -1.
+func IndexRune(ro Rope, r rune) int64 {
+	return IndexFunc(ro, func(x rune) bool { return x == r })
+}
+
 // LastIndexFunc returns the byte index
 // of the last rune in the rope
 // for which a function returns true.
