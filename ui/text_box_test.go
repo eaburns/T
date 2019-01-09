@@ -1260,6 +1260,14 @@ func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
 	goldenImageTest(img, t)
 }
 
+func TestBlank(t *testing.T) {
+	b := NewTextBox(testWin, testTextStyles, testSize)
+	b.SetText(rope.New(""))
+	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	b.Draw(true, img)
+	goldenImageTest(img, t)
+}
+
 func TestCursorBlink(t *testing.T) {
 	b := NewTextBox(testWin, testTextStyles, testSize)
 	b.SetText(rope.New(""))
