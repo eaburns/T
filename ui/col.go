@@ -115,7 +115,7 @@ func (c *Col) Draw(dirty bool, drawImage draw.Image) {
 		if i < len(c.rows)-1 {
 			r.Min.Y = r.Max.Y
 			r.Max.Y += framePx
-			fillRect(img, frameColor, r)
+			fillRect(img, frameBG, r)
 		}
 	}
 }

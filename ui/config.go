@@ -37,8 +37,8 @@ var (
 	// fg is the text foreground color.
 	fg = color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF}
 
-	// frameColor is the lines drawn between columns and rows.
-	frameColor = fg
+	// frameBG is the lines drawn between columns and rows.
+	frameBG = fg
 
 	// colBG is the column background color.
 	colBG = color.White

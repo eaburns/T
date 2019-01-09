@@ -99,7 +99,7 @@ func (w *Win) Draw(dirty bool, drawImg draw.Image) {
 		if i < len(w.cols)-1 {
 			r.Min.X = r.Max.X
 			r.Max.X += framePx
-			fillRect(img, frameColor, r)
+			fillRect(img, frameBG, r)
 		}
 	}
 }
