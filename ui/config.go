@@ -8,9 +8,17 @@ import (
 )
 
 const (
-	// framePx is the pixel width of the lines
+	// framePx is the pixel-width of the lines
 	// drawn between columns and rows.
 	framePx = 1
+
+	// textPadPx is the pixel-width of the padding
+	// between the left and right side of a text box
+	// and its text.
+	textPadPx = 7
+
+	// cursorWidthPx is the pixel-width of the cursor.
+	cursorWidthPx = 4
 
 	// colText is the default column background text.
 	colText = "AddCol DelCol Add\n"

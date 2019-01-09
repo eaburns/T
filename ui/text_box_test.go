@@ -26,8 +26,9 @@ var (
 	testTextStyle3 = TextStyle{FG: color.Black, BG: color.Black, Face: basicfont.Face7x13}
 	testTextStyle4 = TextStyle{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
 	testTextStyles = [4]TextStyle{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
-	testSize       = image.Pt(100, 100)
+	testSize       = image.Pt(200, 200)
 	testWin        = &Win{}
+	zp             = image.Pt(textPadPx, 0)
 )
 
 func TestEdit(t *testing.T) {
@@ -246,7 +247,7 @@ func TestClick1(t *testing.T) {
 			b := NewTextBox(testWin, testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
-			b.Click(test.pt, 1)
+			b.Click(test.pt.Add(zp), 1)
 			if b.dots[1].At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
 			}
@@ -430,8 +431,8 @@ func TestDrag1(t *testing.T) {
 			b := NewTextBox(testWin, testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
-			b.Click(test.pt[0], 1)
-			b.Move(test.pt[1])
+			b.Click(test.pt[0].Add(zp), 1)
+			b.Move(test.pt[1].Add(zp))
 			if b.dots[1].At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
 			}
@@ -446,14 +447,14 @@ func TestDrag2(t *testing.T) {
 			b := NewTextBox(testWin, testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.highlight = test.hi
-			b.Click(test.pt[0], 2)
-			b.Move(test.pt[1])
+			b.Click(test.pt[0].Add(zp), 2)
+			b.Move(test.pt[1].Add(zp))
 			if b.dots[2].At != test.wantDot {
 				t.Errorf("drag: got dot=%v, want dot=%v", b.dots[2].At, test.wantDot)
 			}
 
 			// Unclicking button > 1resets the selection back to 0,0.
-			b.Click(test.pt[1], -2)
+			b.Click(test.pt[1].Add(zp), -2)
 			if b.dots[2].At != [2]int64{} {
 				t.Errorf("unclick: got dot=%v, want dot={}", b.dots[2].At)
 			}
@@ -617,9 +618,9 @@ func TestDoubleClick1(t *testing.T) {
 			b := NewTextBox(testWin, testTextStyles, testSize)
 			b.SetText(rope.New(test.in))
 			b.now = fixedTime
-			b.Click(test.pt, 1)
-			b.Click(test.pt, -1)
-			b.Click(test.pt, 1)
+			b.Click(test.pt.Add(zp), 1)
+			b.Click(test.pt.Add(zp), -1)
+			b.Click(test.pt.Add(zp), 1)
 			if b.dots[1].At != test.wantDot {
 				t.Errorf("got dot=%v, want dot=%v", b.dots[1].At, test.wantDot)
 			}
@@ -1223,55 +1224,61 @@ func TestDraw(t *testing.T) {
 }
 
 func TestDrawEmptyText(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.Focus(true)
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestDrawCursorMidLine(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.dots[1].At = [2]int64{1, 1}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestDrawCursorAtEndOfLastLine(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.SetText(rope.New("Hello"))
 	b.Focus(true)
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.dots[1].At = [2]int64{5, 5}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestDrawCursorOnLineAfterLastLine(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.SetText(rope.New("Hello\n"))
 	b.Focus(true)
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.dots[1].At = [2]int64{6, 6}
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestBlank(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.SetText(rope.New(""))
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.Draw(true, img)
 	goldenImageTest(img, t)
 }
 
 func TestCursorBlink(t *testing.T) {
-	b := NewTextBox(testWin, testTextStyles, testSize)
+	size := image.Pt(100, 100)
+	b := NewTextBox(testWin, testTextStyles, size)
 	b.SetText(rope.New(""))
-	img := image.NewRGBA(image.Rectangle{Max: testSize})
+	img := image.NewRGBA(image.Rectangle{Max: size})
 	var now time.Time
 	b.now = func() time.Time {
 		n := now

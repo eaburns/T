@@ -38,7 +38,7 @@ type TextBox struct {
 	cursorCol  int // rune offset of the cursor in its line; -1 is recompute
 
 	button         int         // currently held mouse button
-	pt             image.Point // where's the mouse
+	pt             image.Point // where's the mouse? 0 is just after textPadPx
 	clickAt        int64       // address of the glyph clicked by the mouse
 	clickTime      time.Time
 	dragAt         int64           // address of the glyph under the dragging mouse
@@ -234,6 +234,7 @@ func (b *TextBox) Tick() bool {
 // Move handles the event of the mouse cursor moving to a point
 // and returns whether the text box image needs to be redrawn.
 func (b *TextBox) Move(pt image.Point) {
+	pt.X -= textPadPx
 	b.pt = pt
 	if b.button <= 0 || b.button >= len(b.dots) || pt.In(b.dragTextBox) {
 		return
@@ -277,6 +278,7 @@ func (b *TextBox) Wheel(x, y int) {
 // A positive value indicates the button was pressed.
 // A negative value indicates the button was released.
 func (b *TextBox) Click(pt image.Point, button int) (int, [2]int64) {
+	pt.X -= textPadPx
 	b.pt = pt
 	switch {
 	case b.button > 0 && button > 0:
@@ -704,7 +706,7 @@ func (b *TextBox) Draw(dirty bool, img draw.Image) {
 	if b.text.Len() == 0 {
 		m := b.style.Face.Metrics()
 		h := m.Height + m.Descent
-		drawCursor(b, img, 0, 0, h)
+		drawCursor(b, img, fixed.I(textPadPx), 0, h)
 		return
 	}
 	// Draw a cursor just after the last line of text.
@@ -718,14 +720,19 @@ func (b *TextBox) Draw(dirty bool, img draw.Image) {
 		lastRune(lastLine) == '\n' {
 		m := b.style.Face.Metrics()
 		h := m.Height + m.Descent
-		drawCursor(b, img, 0, y, y+h)
+		drawCursor(b, img, fixed.I(textPadPx), y, y+h)
 	}
 }
 
 func drawLine(b *TextBox, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 	var prevRune rune
-	var x0 fixed.Int26_6
+	x0 := fixed.I(textPadPx)
 	yb, y1 := y0+l.a, y0+l.h
+
+	// leading padding
+	pad := image.Rect(0, y0.Floor(), textPadPx, y1.Floor())
+	fillRect(img, b.style.BG, pad.Add(img.Bounds().Min))
+
 	for i, s := range l.spans {
 		x1 := x0 + s.w
 
@@ -739,7 +746,7 @@ func drawLine(b *TextBox, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 			prevRune = r
 			var adv fixed.Int26_6
 			if r == '\t' || r == '\n' {
-				adv = advance(b, s.style, x0, r)
+				adv = advance(b, s.style, x0-fixed.I(textPadPx), r)
 			} else {
 				adv = drawGlyph(img, s.style, x0, yb, r)
 			}
@@ -749,14 +756,16 @@ func drawLine(b *TextBox, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 			x0 += adv
 			at += int64(utf8.RuneLen(r))
 		}
+		x0 = x1
 		if i < len(l.spans)-1 && l.spans[i+1].style.Face != s.style.Face {
 			prevRune = 0
 		}
 	}
-	if xmax := img.Bounds().Size().X; x0.Floor() < xmax {
-		bbox := image.Rect(x0.Floor(), y0.Floor(), xmax, y1.Floor())
-		fillRect(img, b.style.BG, bbox.Add(img.Bounds().Min))
-	}
+
+	// trailing padding
+	r := image.Rect(x0.Floor(), y0.Floor(), img.Bounds().Size().X, y1.Floor())
+	fillRect(img, b.style.BG, r.Add(img.Bounds().Min))
+
 	if b.dots[1].At[0] == b.dots[1].At[1] &&
 		at == b.dots[1].At[0] &&
 		at == b.text.Len() &&
@@ -781,7 +790,8 @@ func drawCursor(b *TextBox, img draw.Image, x, y0, y1 fixed.Int26_6) {
 	if !b.showCursor {
 		return
 	}
-	r := image.Rect(x.Floor(), y0.Floor(), x.Floor()+4, y1.Floor())
+	x0 := x.Floor()
+	r := image.Rect(x0, y0.Floor(), x0+cursorWidthPx, y1.Floor())
 	fillRect(img, b.style.FG, r.Add(img.Bounds().Min))
 }
 
@@ -947,6 +957,7 @@ func reset(b *TextBox) {
 	rs := bufio.NewReader(
 		rope.NewReader(rope.Slice(b.text, b.at, b.text.Len())),
 	)
+	maxx := b.size.X - 2*textPadPx
 	var y fixed.Int26_6
 	var text strings.Builder
 	stack := [][]Highlight{b.syntax, b.highlight, {b.dots[1]}, {b.dots[2]}, {b.dots[3]}}
@@ -966,12 +977,12 @@ func reset(b *TextBox) {
 				text.WriteRune(r)
 				at++
 				line.n++
-				x = fixed.I(b.size.X)
+				x = fixed.I(maxx)
 				break
 			}
 			adv := advance(b, style, x, r)
-			if (x + adv).Ceil() >= b.size.X {
-				x = fixed.I(b.size.X)
+			if (x + adv).Ceil() >= maxx {
+				x = fixed.I(maxx)
 				rs.UnreadRune()
 				break
 			}
@@ -1050,7 +1061,7 @@ func nextTextStyle(def TextStyle, stack [][]Highlight, at int64) (TextStyle, [][
 func advance(b *TextBox, style TextStyle, x fixed.Int26_6, r rune) fixed.Int26_6 {
 	switch r {
 	case '\n':
-		return fixed.I(b.size.X) - x
+		return fixed.I(b.size.X-2*textPadPx) - x
 	case '\t':
 		spaceWidth, ok := b.style.Face.GlyphAdvance(' ')
 		if !ok {
