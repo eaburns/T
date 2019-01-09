@@ -4,6 +4,9 @@ import (
 	"image"
 	"image/draw"
 	"math"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
@@ -36,7 +39,6 @@ func NewSheet(w *Win, title string) *Sheet {
 		}
 	)
 	tag := NewTextBox(w, tagTextStyles, image.ZP)
-	tag.SetText(rope.New(title + tagText))
 	body := NewTextBox(w, bodyTextStyles, image.ZP)
 	s := &Sheet{
 		tag:     tag,
@@ -45,6 +47,8 @@ func NewSheet(w *Win, title string) *Sheet {
 		TextBox: body,
 	}
 	tag.setHighlighter(s)
+	tag.SetText(rope.New(tagText))
+	s.SetTitle(title)
 	return s
 }
 
@@ -154,4 +158,62 @@ func setSheetFocus(s *Sheet, pt image.Point, button int) bool {
 		}
 	}
 	return false
+}
+
+// Title returns the title of the sheet.
+// The title is the first space-terminated string in the tag,
+// or if the first rune of the tag is ' , it is the first ' terminated string
+// with \' as an escaped ' and \\ as an escaped \.
+func (s *Sheet) Title() string {
+	_, title := s.title()
+	return title
+}
+
+func (s *Sheet) title() (int64, string) {
+	txt := s.tag.text
+	if rope.IndexRune(txt, '\'') < 0 {
+		i := rope.IndexFunc(txt, unicode.IsSpace)
+		if i < 0 {
+			i = txt.Len()
+		}
+		return i, rope.Slice(txt, 0, i).String()
+	}
+
+	var i int64
+	var esc bool
+	var title strings.Builder
+	rr := rope.NewReader(txt)
+	rr.ReadRune() // discard '
+	for {
+		r, w, err := rr.ReadRune()
+		i += int64(w)
+		switch {
+		case err != nil: // must be io.EOF from rope.Reader
+			fallthrough
+		case !esc && r == '\'':
+			return i + 1, title.String() // +1 for leading '
+		case !esc && r == '\\':
+			esc = true
+		default:
+			esc = false
+			title.WriteRune(r)
+		}
+	}
+}
+
+// SetTitle sets the title of the sheet.
+func (s *Sheet) SetTitle(title string) {
+	r, _ := utf8.DecodeRuneInString(title)
+	if r == '\'' || strings.IndexFunc(title, unicode.IsSpace) >= 0 {
+		title = strings.Replace(title, `\`, `\\`, -1)
+		title = strings.Replace(title, `'`, `\'`, -1)
+		title = `'` + title + `'`
+	}
+	end, _ := s.title()
+	s.tag.Change([]edit.Diff{{At: [2]int64{0, end}, Text: rope.Empty()}})
+	r, _, err := rope.NewReader(s.tag.text).ReadRune()
+	if err == nil && !unicode.IsSpace(r) {
+		title += " "
+	}
+	s.tag.Change([]edit.Diff{{At: [2]int64{0, 0}, Text: rope.New(title)}})
 }

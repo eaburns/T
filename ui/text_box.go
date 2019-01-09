@@ -154,26 +154,36 @@ func ed(b *TextBox, t string) (edit.Diffs, error) {
 		return nil, err
 	}
 	if len(diffs) > 0 {
-		dirtyLines(b)
-		b.text, _ = diffs.Apply(b.text)
-
-		// TODO: if something else deletes \n before b.at,
-		// scroll to beginning of whatever the line becomes.
-		b.at = diffs.Update([2]int64{b.at, b.at})[0]
-
-		b.dots[1].At[0] = diffs[len(diffs)-1].At[0]
-		b.dots[1].At[1] = b.dots[1].At[0] + diffs[len(diffs)-1].TextLen()
-		for i := 2; i < len(b.dots); i++ {
-			b.dots[i].At = diffs.Update(b.dots[i].At)
-		}
-		if b.highlighter != nil {
-			b.syntax = b.highlighter.Update(b.syntax, diffs, b.text)
-		}
-		for i := range b.highlight {
-			b.highlight[i].At = diffs.Update(b.highlight[i].At)
-		}
+		dot := b.dots[1].At
+		b.Change(diffs)
+		dot[0] = diffs[len(diffs)-1].At[0]
+		dot[1] = dot[0] + diffs[len(diffs)-1].TextLen()
+		b.dots[1].At = dot
 	}
 	return diffs, nil
+}
+
+// Change applies a set of diffs to the text box.
+func (b *TextBox) Change(diffs edit.Diffs) {
+	if len(diffs) == 0 {
+		return
+	}
+	dirtyLines(b)
+	b.text, _ = diffs.Apply(b.text)
+
+	// TODO: if something else deletes \n before b.at,
+	// scroll to beginning of whatever the line becomes.
+	b.at = diffs.Update([2]int64{b.at, b.at})[0]
+
+	for i := 1; i < len(b.dots); i++ {
+		b.dots[i].At = diffs.Update(b.dots[i].At)
+	}
+	if b.highlighter != nil {
+		b.syntax = b.highlighter.Update(b.syntax, diffs, b.text)
+	}
+	for i := range b.highlight {
+		b.highlight[i].At = diffs.Update(b.highlight[i].At)
+	}
 }
 
 // Resize handles a resize event.

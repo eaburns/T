@@ -27,8 +27,11 @@ var (
 	testTextStyle4 = TextStyle{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
 	testTextStyles = [4]TextStyle{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
 	testSize       = image.Pt(200, 200)
-	testWin        = &Win{}
 	zp             = image.Pt(textPadPx, 0)
+	testWin        = &Win{
+		face:       basicfont.Face7x13,
+		lineHeight: H,
+	}
 )
 
 func TestEdit(t *testing.T) {
