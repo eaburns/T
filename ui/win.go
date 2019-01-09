@@ -63,7 +63,8 @@ func (w *Win) Del(col *Col) {
 	for i := range w.cols {
 		if w.cols[i] == col {
 			w.cols = append(w.cols[:i], w.cols[i+1:]...)
-			w.widths = append(w.widths[:i-1], w.widths[i:]...)
+			w.widths = append(w.widths[:i], w.widths[i+1:]...)
+			w.widths[len(w.cols)-1] = 1.0
 			if col == w.Col {
 				w.Col = w.cols[0]
 			}
