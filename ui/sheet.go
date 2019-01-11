@@ -4,6 +4,8 @@ import (
 	"image"
 	"image/draw"
 	"math"
+	"os"
+	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -216,4 +218,86 @@ func (s *Sheet) SetTitle(title string) {
 		title += " "
 	}
 	s.tag.Change([]edit.Diff{{At: [2]int64{0, 0}, Text: rope.New(title)}})
+}
+
+// Get loads the body of the sheet
+// with the contents of the file
+// at the path of the sheet's title.
+func (s *Sheet) Get() error {
+	f, err := os.Open(s.Title())
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	st, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	var txt rope.Rope
+	if st.IsDir() {
+		if r, _ := utf8.DecodeLastRuneInString(s.Title()); r != os.PathSeparator {
+			s.SetTitle(s.Title() + string([]rune{os.PathSeparator}))
+		}
+		if txt, err = readFromDir(f); err != nil {
+			return err
+		}
+	} else {
+		if txt, err = rope.ReadFrom(f); err != nil {
+			return err
+		}
+	}
+
+	s.body.SetText(txt)
+	if s.TextBox != s.body {
+		s.TextBox.Focus(false)
+		s.TextBox = s.body
+		s.TextBox.Focus(true)
+	}
+	return nil
+}
+
+func readFromDir(f *os.File) (rope.Rope, error) {
+	txt := rope.Empty()
+	fis, err := f.Readdir(-1)
+	if err != nil {
+		return txt, err
+	}
+	sortFileInfos(fis)
+	for _, fi := range fis {
+		name := fi.Name()
+		if fi.IsDir() {
+			name += "/"
+		}
+		txt = rope.Append(txt, rope.New(name+"\n"))
+	}
+	return txt, nil
+}
+
+func sortFileInfos(fis []os.FileInfo) {
+	sort.Slice(fis, func(i, j int) bool {
+		switch {
+		case fis[i].IsDir() == fis[j].IsDir():
+			return fis[i].Name() < fis[j].Name()
+		case fis[i].IsDir():
+			return true
+		default:
+			return false
+		}
+	})
+}
+
+// Put writes the contents of the body of the sheet
+// to the file at the path of the sheet's title.
+func (s *Sheet) Put() error {
+	f, err := os.Create(s.Title())
+	if err != nil {
+		return err
+	}
+	if _, err := s.body.text.WriteTo(f); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }

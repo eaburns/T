@@ -21,10 +21,10 @@ const (
 	cursorWidthPx = 4
 
 	// colText is the default column background text.
-	colText = "AddCol DelCol Add\n"
+	colText = "Del NewCol NewRow\n"
 
 	// tagText is the default tag text.
-	tagText = " Del"
+	tagText = " Del "
 )
 
 var (

@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/eaburns/T/rope"
@@ -74,5 +77,98 @@ func TestSetTitle(t *testing.T) {
 			t.Errorf("(%q).SetTitle(%q) = %q, want %q",
 				test.text, test.title, got, test.want)
 		}
+	}
+}
+
+func TestSheetGet_TextFile(t *testing.T) {
+	dir, err := ioutil.TempDir("", "t")
+	if err != nil {
+		t.Fatalf("TempDir failed: %v\n", err)
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "file")
+
+	const text = "Hello, World!"
+	write(path, text)
+
+	sh := NewSheet(testWin, path)
+	if err := sh.Get(); err != nil {
+		t.Fatalf("Get()=%v, want nil", err)
+	}
+	if s := sh.body.text.String(); s != text {
+		t.Errorf("body text is %q, want %q", s, text)
+	}
+}
+
+func TestSheetGet_Dir(t *testing.T) {
+	dir, err := ioutil.TempDir("", "t")
+	if err != nil {
+		t.Fatalf("TempDir failed: %v\n", err)
+	}
+	defer os.RemoveAll(dir)
+
+	touch(dir, "c")
+	touch(dir, "b")
+	touch(dir, "a")
+	mkdir(dir, "3")
+	mkdir(dir, "2")
+	mkdir(dir, "1")
+
+	sh := NewSheet(testWin, dir)
+	if err := sh.Get(); err != nil {
+		t.Fatalf("Get()=%v, want nil", err)
+	}
+	const text = "1/\n2/\n3/\na\nb\nc\n"
+	if s := sh.body.text.String(); s != text {
+		t.Errorf("body text is %q, want %q", s, text)
+	}
+}
+
+func TestSheetPut(t *testing.T) {
+	dir, err := ioutil.TempDir("", "t")
+	if err != nil {
+		t.Fatalf("TempDir failed: %v\n", err)
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "file")
+
+	const text = "Hello, World!"
+	sh := NewSheet(testWin, path)
+	sh.SetText(rope.New(text))
+	if err := sh.Put(); err != nil {
+		t.Fatalf("Put()=%v, want nil", err)
+	}
+	if s := read(path); s != text {
+		t.Errorf("read(%q)=%q, want %q", path, s, text)
+	}
+}
+
+func read(path string) string {
+	d, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return string(d)
+}
+
+func write(path, text string) {
+	if err := ioutil.WriteFile(path, []byte(text), os.ModePerm); err != nil {
+		panic(err)
+	}
+}
+
+func touch(dir, file string) {
+	f, err := os.Create(filepath.Join(dir, file))
+	if err != nil {
+		panic(err)
+	}
+	if err := f.Close(); err != nil {
+		panic(err)
+	}
+}
+
+func mkdir(dir, subdir string) {
+	if err := os.Mkdir(filepath.Join(dir, subdir), os.ModePerm); err != nil {
+		panic(err)
 	}
 }

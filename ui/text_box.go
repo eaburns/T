@@ -108,6 +108,16 @@ func (b *TextBox) Text() rope.Rope { return b.text }
 // The text box always must be redrawn after setting the text.
 func (b *TextBox) SetText(text rope.Rope) {
 	b.text = text
+
+	b.at = 0
+	b.cursorCol = -1
+	b.clickAt = 0
+	b.dragAt = 0
+	b.dragTextBox = image.ZR
+	for i := range b.dots {
+		b.dots[i].At = [2]int64{}
+	}
+	b.highlight = nil
 	if b.highlighter != nil {
 		b.syntax = b.highlighter.Update(nil, nil, b.text)
 	}
