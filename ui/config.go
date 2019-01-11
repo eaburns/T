@@ -3,6 +3,9 @@ package ui
 import (
 	"image/color"
 
+	"github.com/eaburns/T/syntax"
+	"github.com/eaburns/T/syntax/dirsyntax"
+	"github.com/eaburns/T/syntax/gosyntax"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font/gofont/goregular"
 )
@@ -54,4 +57,14 @@ var (
 	hiBG1 = color.RGBA{R: 0xDF, G: 0xC6, B: 0xDF, A: 0xFF}
 	hiBG2 = color.RGBA{R: 0xF6, G: 0xC3, B: 0xC6, A: 0xFF}
 	hiBG3 = color.RGBA{R: 0xD0, G: 0xEA, B: 0xC8, A: 0xFF}
+
+	// syntaxHighlighting maps file regular (using regexp package syntax)
+	// to functions from dpi to the Highlighter for that file.
+	syntaxHighlighting = []struct {
+		regexp string
+		tok    func(float32) syntax.Tokenizer
+	}{
+		{`.*\.go$`, gosyntax.NewTokenizer},
+		{`.*/$`, dirsyntax.NewTokenizer},
+	}
 )

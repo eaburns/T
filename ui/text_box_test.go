@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/eaburns/T/rope"
+	"github.com/eaburns/T/syntax"
+	"github.com/eaburns/T/text"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/font/gofont/goregular"
@@ -21,11 +23,11 @@ import (
 var (
 	A              = basicfont.Face7x13.Advance
 	H              = basicfont.Face7x13.Height + basicfont.Face7x13.Descent
-	testTextStyle1 = TextStyle{FG: color.Black, BG: color.White, Face: basicfont.Face7x13}
-	testTextStyle2 = TextStyle{FG: color.White, BG: color.Black, Face: basicfont.Face7x13}
-	testTextStyle3 = TextStyle{FG: color.Black, BG: color.Black, Face: basicfont.Face7x13}
-	testTextStyle4 = TextStyle{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
-	testTextStyles = [4]TextStyle{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
+	testTextStyle1 = text.Style{FG: color.Black, BG: color.White, Face: basicfont.Face7x13}
+	testTextStyle2 = text.Style{FG: color.White, BG: color.Black, Face: basicfont.Face7x13}
+	testTextStyle3 = text.Style{FG: color.Black, BG: color.Black, Face: basicfont.Face7x13}
+	testTextStyle4 = text.Style{FG: color.White, BG: color.White, Face: basicfont.Face7x13}
+	testTextStyles = [4]text.Style{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
 	testSize       = image.Pt(200, 200)
 	zp             = image.Pt(textPadPx, 0)
 	// TODO: each test should create its own testWin
@@ -125,7 +127,7 @@ func TestClick1(t *testing.T) {
 	tests := []struct {
 		name    string
 		in      string
-		hi      []Highlight
+		hi      []syntax.Highlight
 		pt      image.Point
 		wantDot [2]int64
 	}{
@@ -228,18 +230,18 @@ func TestClick1(t *testing.T) {
 		{
 			name: "with highlight",
 			in:   "line1\nline2\nline3",
-			hi: []Highlight{
+			hi: []syntax.Highlight{
 				{
-					At:        [2]int64{0, 4}, // "line" in line1
-					TextStyle: testTextStyle2,
+					At:    [2]int64{0, 4}, // "line" in line1
+					Style: testTextStyle2,
 				},
 				{
-					At:        [2]int64{6, 7}, // "l" in line2
-					TextStyle: testTextStyle3,
+					At:    [2]int64{6, 7}, // "l" in line2
+					Style: testTextStyle3,
 				},
 				{
-					At:        [2]int64{12, 16}, // "line" in line3
-					TextStyle: testTextStyle4,
+					At:    [2]int64{12, 16}, // "line" in line3
+					Style: testTextStyle4,
 				},
 			},
 			pt:      image.Pt(A+A/2, H+H/2), // line 1, col 1
@@ -263,7 +265,7 @@ func TestClick1(t *testing.T) {
 var dragTests = []struct {
 	name    string
 	in      string
-	hi      []Highlight
+	hi      []syntax.Highlight
 	pt      [2]image.Point
 	wantDot [2]int64
 }{
@@ -407,18 +409,18 @@ var dragTests = []struct {
 	{
 		name: "with highlight",
 		in:   "line1\nline2\nline3",
-		hi: []Highlight{
+		hi: []syntax.Highlight{
 			{
-				At:        [2]int64{0, 4}, // "line" in line1
-				TextStyle: testTextStyle2,
+				At:    [2]int64{0, 4}, // "line" in line1
+				Style: testTextStyle2,
 			},
 			{
-				At:        [2]int64{6, 7}, // "l" in line2
-				TextStyle: testTextStyle3,
+				At:    [2]int64{6, 7}, // "l" in line2
+				Style: testTextStyle3,
 			},
 			{
-				At:        [2]int64{12, 16}, // "line" in line3
-				TextStyle: testTextStyle4,
+				At:    [2]int64{12, 16}, // "line" in line3
+				Style: testTextStyle4,
 			},
 		},
 		pt: [2]image.Point{
@@ -1153,8 +1155,8 @@ func TestClickAfterLastLineSelected(t *testing.T) {
 	const str = "Hello"
 	b := NewTextBox(testWin, testTextStyles, testSize)
 	b.SetText(rope.New(str))
-	b.syntax = []Highlight{
-		{At: [2]int64{0, 3}, TextStyle: testTextStyle1},
+	b.syntax = []syntax.Highlight{
+		{At: [2]int64{0, 3}, Style: testTextStyle1},
 	}
 	b.Click(image.Pt(10*A+A/2, 4*H+H/2), 1)
 
@@ -1165,7 +1167,7 @@ func TestClickAfterLastLineSelected(t *testing.T) {
 	}
 }
 
-const text = `	"Jabberwocky"
+const testText = `	"Jabberwocky"
 
 ’Twas brillig, and the slithy toves
 Did gyre and gimble in the wabe;
@@ -1208,21 +1210,21 @@ func TestDraw(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	size := image.Pt(300, 750)
-	style := TextStyle{
+	style := text.Style{
 		FG:   color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF},
 		BG:   color.RGBA{R: 0xFE, G: 0xF0, B: 0xE6, A: 0xFF},
 		Face: truetype.NewFace(goregular, &truetype.Options{Size: 16}),
 	}
-	style1 := TextStyle{
+	style1 := text.Style{
 		FG:   color.RGBA{R: 0x10, G: 0x28, B: 0x34, A: 0xFF},
 		BG:   color.RGBA{R: 0xB6, G: 0xDA, B: 0xFD, A: 0xFF},
 		Face: truetype.NewFace(goregular, &truetype.Options{Size: 16}),
 	}
-	styles := [4]TextStyle{style, style1, style, style}
+	styles := [4]text.Style{style, style1, style, style}
 	b := NewTextBox(testWin, styles, size)
-	b.SetText(rope.New(text))
+	b.SetText(rope.New(testText))
 	b.dots[1].At = [2]int64{7, 12}
-	b.dots[1].TextStyle = style1
+	b.dots[1].Style = style1
 	img := image.NewRGBA(image.Rectangle{Max: size})
 	b.Draw(true, img)
 	goldenImageTest(img, t)

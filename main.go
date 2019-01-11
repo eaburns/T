@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"image"
-	"image/color"
 	"image/draw"
 	"log"
 	"math"
@@ -13,13 +12,9 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/eaburns/T/edit"
-	"github.com/eaburns/T/re1"
-	"github.com/eaburns/T/rope"
 	"github.com/eaburns/T/ui"
 	"golang.org/x/exp/shiny/driver/gldriver"
 	"golang.org/x/exp/shiny/screen"
-	"golang.org/x/image/font"
 	"golang.org/x/image/math/f64"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -304,80 +299,4 @@ func bufTex(scr screen.Screen, sz image.Point) (screen.Buffer, screen.Texture) {
 		panic(err)
 	}
 	return buf, tex
-}
-
-type syntax struct {
-	Regexp    *re1.Regexp
-	Group     int
-	TextStyle ui.TextStyle
-}
-
-var (
-	stringColor  = color.RGBA{R: 0x2F, G: 0x6F, B: 0x89, A: 0xFF}
-	commentColor = color.RGBA{R: 0x70, G: 0x70, B: 0x70, A: 0xFF}
-
-	operator = mustCompile(`([ \t]|^)(\+|&|\+=|&=|&&|==|!=|\(|\)|-|\||-=|\|=|\|\||<|<=|\[|\]|\*|\^|\*=|\^=|<-|>|>=|{|}|/|<<|/=|<<=|\+\+|=|:=|,|;|%|>>|%=|>>=|--|!|\.\.\.|\.|:|&\^|&\^=)([ \t]|$)`)
-
-	keyword = mustCompile(`(^|[^a-zA-Z0-9_])(break|default|func|interface|select|case|defer|go|map|struct|chan|else|goto|package|switch|const|fallthrough|if|range|type|continue|for|import|return|var)([^a-zA-Z0-9_]|$)`)
-
-	blockComment = `/[*]([^*]|[*][^/])*[*]/`
-	lineComment  = `//.*`
-	comment      = mustCompile("(" + blockComment + ")|(" + lineComment + ")")
-
-	interpString  = `("([^"\n]|\\["\n])*([^\\\n]|\\\n)")|""`
-	rawString     = "`[^`]*`"
-	stringLiteral = mustCompile("(" + interpString + ")|(" + rawString + ")")
-	runeLiteral   = mustCompile(`'[^']'|'\\t'|'\\n'|'\\\\'|'\\''`)
-)
-
-type highlighter struct {
-	face font.Face
-}
-
-func (h highlighter) Update(_ []ui.Highlight, _ edit.Diffs, txt rope.Rope) []ui.Highlight {
-	syntax := []syntax{
-		{Regexp: comment, TextStyle: ui.TextStyle{FG: commentColor}},
-		{Regexp: stringLiteral, TextStyle: ui.TextStyle{FG: stringColor}},
-		{Regexp: runeLiteral, TextStyle: ui.TextStyle{FG: stringColor}},
-		{Regexp: keyword, Group: 2, TextStyle: ui.TextStyle{Face: h.face}},
-	}
-
-	var at int64
-	var hi []ui.Highlight
-	for {
-		matches := make([][]int64, len(syntax))
-		for i, s := range syntax {
-			matches[i] = s.Regexp.FindInRope(txt, at, txt.Len())
-		}
-		next, index := int64(-1), -1
-		for i := range matches {
-			if matches[i] == nil {
-				continue
-			}
-			if next < 0 || matches[i][2*syntax[i].Group] < next {
-				next = matches[i][2*syntax[i].Group]
-				index = i
-			}
-		}
-		if index < 0 {
-			return hi
-		}
-		at0 := at
-		at = matches[index][2*syntax[index].Group+1]
-		if at0 == at {
-			panic("bad syntax regexp")
-		}
-		hi = append(hi, ui.Highlight{
-			At:        [2]int64{matches[index][0], matches[index][1]},
-			TextStyle: syntax[index].TextStyle,
-		})
-	}
-}
-
-func mustCompile(str string) *re1.Regexp {
-	re, residual, err := re1.New(str, re1.Opts{})
-	if err != nil || residual != "" {
-		panic("err: " + err.Error() + ", residual: " + residual)
-	}
-	return re
 }

@@ -15,6 +15,8 @@ import (
 
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
+	"github.com/eaburns/T/syntax"
+	"github.com/eaburns/T/text"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -46,22 +48,15 @@ type TextBox struct {
 	dragScrollTime time.Time       // time when dragging off screen scrolls
 	wheelTime      time.Time       // time when we will consider the next wheel
 
-	style       TextStyle
-	dots        [4]Highlight // cursor for unused, click 1, click 2, and click 3.
-	highlight   []Highlight  // highlighted words
-	syntax      []Highlight  // syntax highlighting
-	highlighter Highlighter  // syntax highlighter
+	style       text.Style
+	dots        [4]syntax.Highlight // cursor for unused, click 1, click 2, and click 3.
+	highlight   []syntax.Highlight  // highlighted words
+	syntax      []syntax.Highlight  // syntax highlighting
+	highlighter updater             // syntax highlighter
 
 	dirty  bool
 	_lines []line
 	now    func() time.Time
-}
-
-// Highlighter computes syntax highlighting when the text is changed.
-type Highlighter interface {
-	// Update returns the updated syntax highlighting,
-	// given the original highlighting, diffs, and the new text.
-	Update([]Highlight, edit.Diffs, rope.Rope) []Highlight
 }
 
 type line struct {
@@ -73,7 +68,7 @@ type line struct {
 
 type span struct {
 	w     fixed.Int26_6
-	style TextStyle
+	style text.Style
 	text  string
 }
 
@@ -83,17 +78,17 @@ type span struct {
 // 	1: 1-click selection style
 // 	2: 2-click selection style
 // 	3: 3-click selection style
-func NewTextBox(w *Win, styles [4]TextStyle, size image.Point) *TextBox {
+func NewTextBox(w *Win, styles [4]text.Style, size image.Point) *TextBox {
 	b := &TextBox{
 		win:   w,
 		size:  size,
 		text:  rope.Empty(),
 		style: styles[0],
-		dots: [...]Highlight{
-			{TextStyle: styles[0]},
-			{TextStyle: styles[1]},
-			{TextStyle: styles[2]},
-			{TextStyle: styles[3]},
+		dots: [...]syntax.Highlight{
+			{Style: styles[0]},
+			{Style: styles[1]},
+			{Style: styles[2]},
+			{Style: styles[3]},
 		},
 		cursorCol: -1,
 		now:       func() time.Time { return time.Now() },
@@ -146,9 +141,15 @@ func (b *TextBox) textHeight() int {
 	return y.Ceil()
 }
 
-func (b *TextBox) setHighlighter(highlighter Highlighter) {
+type updater interface {
+	Update([]syntax.Highlight, edit.Diffs, rope.Rope) []syntax.Highlight
+}
+
+func (b *TextBox) setHighlighter(highlighter updater) {
 	b.highlighter = highlighter
-	b.syntax = b.highlighter.Update(nil, nil, b.text)
+	if b.highlighter != nil {
+		b.syntax = b.highlighter.Update(nil, nil, b.text)
+	}
 	dirtyLines(b)
 }
 
@@ -794,7 +795,7 @@ func drawLine(b *TextBox, img draw.Image, at int64, y0 fixed.Int26_6, l line) {
 	}
 }
 
-func drawGlyph(img draw.Image, style TextStyle, x0, yb fixed.Int26_6, r rune) fixed.Int26_6 {
+func drawGlyph(img draw.Image, style text.Style, x0, yb fixed.Int26_6, r rune) fixed.Int26_6 {
 	pt := fixed.Point26_6{X: x0, Y: yb}
 	dr, m, mp, adv, ok := style.Face.Glyph(pt, r)
 	if !ok {
@@ -849,7 +850,7 @@ func atPoint(b *TextBox, pt image.Point) (int64, image.Rectangle) {
 
 	at0 := at
 	var s *span
-	var prevTextStyle TextStyle
+	var prevTextStyle text.Style
 	var prevRune rune
 	var x0, x1 fixed.Int26_6
 	for i := range l.spans {
@@ -979,8 +980,8 @@ func reset(b *TextBox) {
 	)
 	maxx := b.size.X - 2*textPadPx
 	var y fixed.Int26_6
-	var text strings.Builder
-	stack := [][]Highlight{b.syntax, b.highlight, {b.dots[1]}, {b.dots[2]}, {b.dots[3]}}
+	var txt strings.Builder
+	stack := [][]syntax.Highlight{b.syntax, b.highlight, {b.dots[1]}, {b.dots[2]}, {b.dots[3]}}
 	for at < b.text.Len() && y < fixed.I(b.size.Y) {
 		var prevRune rune
 		var x0, x fixed.Int26_6
@@ -994,7 +995,7 @@ func reset(b *TextBox) {
 			}
 			x += kern(style, prevRune, r)
 			if r == '\n' {
-				text.WriteRune(r)
+				txt.WriteRune(r)
 				at++
 				line.n++
 				x = fixed.I(maxx)
@@ -1006,12 +1007,12 @@ func reset(b *TextBox) {
 				rs.UnreadRune()
 				break
 			}
-			text.WriteRune(r)
+			txt.WriteRune(r)
 			x += adv
 			at += int64(w)
 			line.n += int64(w)
 			if at == next {
-				appendSpan(&line, x0, x, style, &text)
+				appendSpan(&line, x0, x, style, &txt)
 				x0 = x
 				prevFace := style.Face
 				style, stack, next = nextTextStyle(b.style, stack, at)
@@ -1020,7 +1021,7 @@ func reset(b *TextBox) {
 				}
 			}
 		}
-		appendSpan(&line, x0, x, style, &text)
+		appendSpan(&line, x0, x, style, &txt)
 		if y += line.h; y > fixed.I(b.size.Y) {
 			break
 		}
@@ -1028,7 +1029,7 @@ func reset(b *TextBox) {
 	}
 }
 
-func appendSpan(line *line, x0, x fixed.Int26_6, style TextStyle, text *strings.Builder) {
+func appendSpan(line *line, x0, x fixed.Int26_6, style text.Style, text *strings.Builder) {
 	m := style.Face.Metrics()
 	line.a = max(line.a, m.Ascent)
 	line.h = max(line.h, m.Height+m.Descent)
@@ -1040,7 +1041,7 @@ func appendSpan(line *line, x0, x fixed.Int26_6, style TextStyle, text *strings.
 	text.Reset()
 }
 
-func kern(style TextStyle, prev, cur rune) fixed.Int26_6 {
+func kern(style text.Style, prev, cur rune) fixed.Int26_6 {
 	if prev == 0 {
 		return 0
 	}
@@ -1054,7 +1055,7 @@ func max(a, b fixed.Int26_6) fixed.Int26_6 {
 	return b
 }
 
-func nextTextStyle(def TextStyle, stack [][]Highlight, at int64) (TextStyle, [][]Highlight, int64) {
+func nextTextStyle(def text.Style, stack [][]syntax.Highlight, at int64) (text.Style, [][]syntax.Highlight, int64) {
 	style, next := def, int64(-1)
 	for i := range stack {
 		for len(stack[i]) > 0 && stack[i][0].At[1] <= at {
@@ -1073,12 +1074,12 @@ func nextTextStyle(def TextStyle, stack [][]Highlight, at int64) (TextStyle, [][
 		if hi.At[1] < next || next < 0 {
 			next = hi.At[1]
 		}
-		style = style.merge(hi.TextStyle)
+		style = style.Merge(hi.Style)
 	}
 	return style, stack, next
 }
 
-func advance(b *TextBox, style TextStyle, x fixed.Int26_6, r rune) fixed.Int26_6 {
+func advance(b *TextBox, style text.Style, x fixed.Int26_6, r rune) fixed.Int26_6 {
 	switch r {
 	case '\n':
 		return fixed.I(b.size.X-2*textPadPx) - x

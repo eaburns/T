@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -13,6 +15,8 @@ import (
 
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
+	"github.com/eaburns/T/syntax"
+	"github.com/eaburns/T/text"
 )
 
 // A Sheet is a tag and a body.
@@ -28,13 +32,13 @@ type Sheet struct {
 // NewSheet returns a new sheet.
 func NewSheet(w *Win, title string) *Sheet {
 	var (
-		tagTextStyles = [...]TextStyle{
+		tagTextStyles = [...]text.Style{
 			{FG: fg, BG: tagBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
 			{BG: hiBG3},
 		}
-		bodyTextStyles = [...]TextStyle{
+		bodyTextStyles = [...]text.Style{
 			{FG: fg, BG: bodyBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
@@ -102,7 +106,7 @@ func (s *Sheet) Resize(size image.Point) {
 }
 
 // Update watches for updates to the tag and resizes it to fit the text height.
-func (s *Sheet) Update([]Highlight, edit.Diffs, rope.Rope) []Highlight {
+func (s *Sheet) Update([]syntax.Highlight, edit.Diffs, rope.Rope) []syntax.Highlight {
 	oldTagH := s.tagH
 	resetTagHeight(s, s.size)
 	if s.tagH != oldTagH {
@@ -225,7 +229,8 @@ func (s *Sheet) SetTitle(title string) {
 // with the contents of the file
 // at the path of the sheet's title.
 func (s *Sheet) Get() error {
-	f, err := os.Open(s.Title())
+	title := s.Title()
+	f, err := os.Open(title)
 	if err != nil {
 		return err
 	}
@@ -238,7 +243,6 @@ func get(s *Sheet, f *os.File) error {
 	if err != nil {
 		return err
 	}
-
 	switch {
 	case st.IsDir():
 		err = getDir(s, f)
@@ -261,7 +265,9 @@ func getText(s *Sheet, f *os.File) error {
 	if err != nil {
 		return err
 	}
+	s.body.setHighlighter(nil)
 	s.body.SetText(txt)
+	s.body.setHighlighter(syntaxHighlighter(s.win.dpi, s.Title()))
 	return nil
 }
 
@@ -272,6 +278,7 @@ func getDir(s *Sheet, f *os.File) error {
 		return err
 	}
 	s.body.SetText(txt)
+	s.body.setHighlighter(syntaxHighlighter(s.win.dpi, s.Title()))
 	return nil
 }
 
@@ -313,6 +320,18 @@ func sortFileInfos(fis []os.FileInfo) {
 			return false
 		}
 	})
+}
+
+func syntaxHighlighter(dpi float32, path string) updater {
+	for _, s := range syntaxHighlighting {
+		switch ok, err := regexp.MatchString(s.regexp, path); {
+		case err != nil:
+			fmt.Println(err.Error())
+		case ok:
+			return &highlighter{s.tok(dpi)}
+		}
+	}
+	return nil
 }
 
 // Put writes the contents of the body of the sheet

@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/eaburns/T/rope"
+	"github.com/eaburns/T/text"
 )
 
 // A Col is a column of sheets.
@@ -23,7 +24,7 @@ type Col struct {
 // TODO: NewCol is just a temporary implementation.
 func NewCol(w *Win) *Col {
 	var (
-		bodyTextStyles = [...]TextStyle{
+		bodyTextStyles = [...]text.Style{
 			{FG: fg, BG: colBG, Face: w.face},
 			{BG: hiBG1},
 			{BG: hiBG2},
