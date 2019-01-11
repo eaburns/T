@@ -24,7 +24,7 @@ const (
 	colText = "AddCol DelCol Add\n"
 
 	// tagText is the default tag text.
-	tagText = " | Del"
+	tagText = " Del"
 )
 
 var (
