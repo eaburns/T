@@ -509,6 +509,9 @@ func sub(a [2]int64, t string, ro rope.Rope) (Diffs, string, error) {
 		if ms = re.FindInRope(ro, a[0], a[1]); ms == nil {
 			break
 		}
+		if len(ms) > 0 {
+			ms = ms[:len(ms)-1] // trim regexp ID
+		}
 		if ms[1] == ms[0] {
 			a[0]++
 		} else {
@@ -928,7 +931,7 @@ func regexpAddr(ro rope.Rope, at int64, rev bool, t string) ([2]int64, string, e
 			ms = re.FindInRope(ro, 0, ro.Len())
 		}
 	}
-	if ms == nil {
+	if len(ms) == 0 {
 		return [2]int64{}, t, errors.New("no match")
 	}
 	return [2]int64{ms[0], ms[1]}, t, err

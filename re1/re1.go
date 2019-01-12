@@ -53,6 +53,10 @@ type Opts struct {
 	Reverse bool
 	// Delimiter specifies a rune that delimits parsing if unescaped.
 	Delimiter rune
+	// ID is a user-specfied ID to identify the the regexp.
+	// This is used to distinguish which regexp matched
+	// when concatenating multiple regexps into one.
+	ID int
 }
 
 // New compiles a regular expression.
@@ -69,15 +73,14 @@ func New(t string, opts Opts) (*Regexp, string, error) {
 		fallthrough
 	default:
 		re = groupProg(re)
-		re.prog = append(re.prog, instr{op: match})
+		re.prog = append(re.prog, instr{op: match, arg: opts.ID})
 		re.source = src
 		return re, t, nil
 	}
 }
 
 const (
-	match = -iota
-	any
+	any = -iota
 	bol
 	eol
 	class  // arg is class index
@@ -86,6 +89,7 @@ const (
 	fork   // arg is low-priority fork offset (high-priority is 1)
 	rfork  // arg is high-priority fork offset (low-priority is 1)
 	save   // arg is save-to index
+	match  // arg is the id of the matching regexp
 )
 
 type instr struct {
@@ -331,7 +335,7 @@ func esc(t string) (rune, string) {
 	return r, t
 }
 
-// Find returns the left-most, longest match and sub-expression matches.
+// Find returns nil on no match or a slice with pairs of int64s for each sub-expression match (0 is the full match) and the last element is the matching regexp ID.
 func (re *Regexp) Find(rr io.RuneReader) []int64 { return run(newVM(re, rr)) }
 
 type vm struct {
@@ -364,7 +368,7 @@ func newMem(v *vm, init []int64) (m []int64) {
 	if n := len(v.free); n > 0 {
 		m, v.free = v.free[n-1], v.free[:n-1]
 	} else {
-		m = make([]int64, 2*v.re.ncap)
+		m = make([]int64, 2*v.re.ncap+1 /* match ID */)
 	}
 	if init != nil {
 		copy(m, init)
@@ -478,6 +482,7 @@ func _add(v *vm, pc int, mem []int64) {
 		}
 		add(v, pc+1, mem)
 	case match:
+		mem[len(mem)-1] = int64(instr.arg)
 		setMatch(v, mem)
 	}
 }

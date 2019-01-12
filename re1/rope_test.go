@@ -221,6 +221,10 @@ func runRopeTest(t *testing.T, test ropeTest, opts Opts) {
 		} else {
 			ms = re.FindInRope(rope.New(c.str), c.s, c.e)
 		}
+		if len(ms) > 0 {
+			// trim the regexp id
+			ms = ms[:len(ms)-1]
+		}
 		for i := 0; i < len(ms); i += 2 {
 			if ms[i] < 0 || ms[i+1] < 0 {
 				got = append(got, "")

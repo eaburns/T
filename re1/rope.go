@@ -37,7 +37,8 @@ func (re *Regexp) FindReverseInRope(ro rope.Rope, s, e int64) []int64 {
 	v.c = nextRune(ro, e)
 	v.lim = e - s
 	ms := run(v)
-	for i := 0; i < len(ms); i += 2 {
+	// Only reverse to len(ms)-1, because the last is the regexp ID.
+	for i := 0; i < len(ms)-1; i += 2 {
 		if ms[i] >= 0 {
 			ms[i], ms[i+1] = e-ms[i+1], e-ms[i]
 		}

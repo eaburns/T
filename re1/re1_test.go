@@ -331,7 +331,6 @@ var findReverseTests = []findTest{
 }
 
 func TestReverseFind(t *testing.T) {
-
 	for _, test := range findReverseTests {
 		runTest(t, test, Opts{Reverse: true})
 	}
@@ -366,6 +365,10 @@ func runTest(t *testing.T, test findTest, opts Opts) {
 func runTestCaseForward(t *testing.T, re *Regexp, c findTestCase) {
 	var got []string
 	ms := re.Find(strings.NewReader(c.str))
+	if len(ms) > 0 {
+		// trim the regexp id
+		ms = ms[:len(ms)-1]
+	}
 	for i := 0; i < len(ms); i += 2 {
 		if ms[i] < 0 || ms[i+1] < 0 {
 			got = append(got, "")
@@ -383,6 +386,10 @@ func runTestCaseReverse(t *testing.T, re *Regexp, c findTestCase) {
 	rr, nrunes := reverse(c.str)
 	var got []string
 	ms := re.Find(rr)
+	if len(ms) > 0 {
+		// trim the regexp id
+		ms = ms[:len(ms)-1]
+	}
 	for i := 0; i < len(ms); i += 2 {
 		if ms[i] < 0 || ms[i+1] < 0 {
 			got = append(got, "")
