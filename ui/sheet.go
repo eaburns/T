@@ -5,6 +5,7 @@ import (
 	"image/draw"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -229,27 +230,24 @@ func (s *Sheet) Get() error {
 		return err
 	}
 	defer f.Close()
+	return get(s, f)
+}
 
+func get(s *Sheet, f *os.File) error {
 	st, err := f.Stat()
 	if err != nil {
 		return err
 	}
 
-	var txt rope.Rope
-	if st.IsDir() {
-		if r, _ := utf8.DecodeLastRuneInString(s.Title()); r != os.PathSeparator {
-			s.SetTitle(s.Title() + string([]rune{os.PathSeparator}))
-		}
-		if txt, err = readFromDir(f); err != nil {
-			return err
-		}
-	} else {
-		if txt, err = rope.ReadFrom(f); err != nil {
-			return err
-		}
+	switch {
+	case st.IsDir():
+		err = getDir(s, f)
+	default:
+		err = getText(s, f)
 	}
-
-	s.body.SetText(txt)
+	if err != nil {
+		return err
+	}
 	if s.TextBox != s.body {
 		s.TextBox.Focus(false)
 		s.TextBox = s.body
@@ -258,7 +256,33 @@ func (s *Sheet) Get() error {
 	return nil
 }
 
-func readFromDir(f *os.File) (rope.Rope, error) {
+func getText(s *Sheet, f *os.File) error {
+	txt, err := rope.ReadFrom(f)
+	if err != nil {
+		return err
+	}
+	s.body.SetText(txt)
+	return nil
+}
+
+func getDir(s *Sheet, f *os.File) error {
+	s.SetTitle(ensureTrailingSlash(s.Title()))
+	txt, err := readFromDir("", f)
+	if err != nil {
+		return err
+	}
+	s.body.SetText(txt)
+	return nil
+}
+
+func ensureTrailingSlash(p string) string {
+	if r, _ := utf8.DecodeLastRuneInString(p); r != os.PathSeparator {
+		return p + string([]rune{os.PathSeparator})
+	}
+	return p
+}
+
+func readFromDir(prefix string, f *os.File) (rope.Rope, error) {
 	txt := rope.Empty()
 	fis, err := f.Readdir(-1)
 	if err != nil {
@@ -267,8 +291,11 @@ func readFromDir(f *os.File) (rope.Rope, error) {
 	sortFileInfos(fis)
 	for _, fi := range fis {
 		name := fi.Name()
+		if prefix != "" {
+			name = filepath.Join(prefix, name)
+		}
 		if fi.IsDir() {
-			name += "/"
+			name = ensureTrailingSlash(name)
 		}
 		txt = rope.Append(txt, rope.New(name+"\n"))
 	}

@@ -81,10 +81,7 @@ func TestSetTitle(t *testing.T) {
 }
 
 func TestSheetGet_TextFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "t")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v\n", err)
-	}
+	dir := tmpdir()
 	defer os.RemoveAll(dir)
 	path := filepath.Join(dir, "file")
 
@@ -101,18 +98,15 @@ func TestSheetGet_TextFile(t *testing.T) {
 }
 
 func TestSheetGet_Dir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "t")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v\n", err)
-	}
+	dir := tmpdir()
 	defer os.RemoveAll(dir)
 
 	touch(dir, "c")
 	touch(dir, "b")
 	touch(dir, "a")
-	mkdir(dir, "3")
-	mkdir(dir, "2")
-	mkdir(dir, "1")
+	mkSubDir(dir, "3")
+	mkSubDir(dir, "2")
+	mkSubDir(dir, "1")
 
 	sh := NewSheet(testWin, dir)
 	if err := sh.Get(); err != nil {
@@ -125,10 +119,7 @@ func TestSheetGet_Dir(t *testing.T) {
 }
 
 func TestSheetPut(t *testing.T) {
-	dir, err := ioutil.TempDir("", "t")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v\n", err)
-	}
+	dir := tmpdir()
 	defer os.RemoveAll(dir)
 	path := filepath.Join(dir, "file")
 
@@ -167,7 +158,15 @@ func touch(dir, file string) {
 	}
 }
 
-func mkdir(dir, subdir string) {
+func tmpdir() string {
+	dir, err := ioutil.TempDir("", "T_test_")
+	if err != nil {
+		panic(err)
+	}
+	return dir
+}
+
+func mkSubDir(dir, subdir string) {
 	if err := os.Mkdir(filepath.Join(dir, subdir), os.ModePerm); err != nil {
 		panic(err)
 	}

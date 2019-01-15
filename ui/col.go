@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	"unicode"
@@ -315,8 +316,13 @@ func (c *Col) Click(pt image.Point, button int) {
 	pt.Y -= y0(c, focusedRow(c))
 	button, addr := c.Row.Click(pt, button)
 	if button == -2 {
-		if tb := getTextBox(c.Row); tb != nil {
-			execCmd(c, getSheet(c.Row), getCmd(tb, addr))
+		tb := getTextBox(c.Row)
+		if tb == nil {
+			return
+		}
+		if err := execCmd(c, getSheet(c.Row), getCmd(tb, addr)); err != nil {
+			// TODO: print command errors to a sheet.
+			fmt.Println(err.Error())
 		}
 	}
 }
