@@ -380,9 +380,6 @@ func getSheet(r Row) *Sheet {
 }
 
 func setColFocus(c *Col, pt image.Point, button int) bool {
-	if button != 1 {
-		return false
-	}
 	var i int
 	var o Row
 	for i, o = range c.rows {

@@ -191,9 +191,6 @@ func (w *Win) Click(pt image.Point, button int) {
 }
 
 func setWinFocus(w *Win, pt image.Point, button int) bool {
-	if button != 1 {
-		return false
-	}
 	var i int
 	var c *Col
 	for i, c = range w.cols {
