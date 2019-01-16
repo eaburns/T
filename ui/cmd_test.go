@@ -8,6 +8,19 @@ import (
 	"github.com/eaburns/T/rope"
 )
 
+func TestCmd_empty(t *testing.T) {
+	var (
+		w = newTestWin()
+		c = w.cols[0]
+	)
+	if err := execCmd(c, nil, ""); err != nil {
+		t.Fatalf("execCmd failed: %v", err)
+	}
+	if len(c.rows) > 1 {
+		t.Errorf("len(c.rows)=%d, wanted %d", len(c.rows), 1)
+	}
+}
+
 func TestCmd_openDir(t *testing.T) {
 	dir := tmpdir()
 	defer os.RemoveAll(dir)
@@ -162,6 +175,19 @@ sub/c
 				t.Errorf("body=%q, want %q", str, test.want)
 			}
 		})
+	}
+}
+
+func TestLook_empty(t *testing.T) {
+	var (
+		w = newTestWin()
+		c = w.cols[0]
+	)
+	if err := lookText(c, nil, ""); err != nil {
+		t.Fatalf("execCmd failed: %v", err)
+	}
+	if len(c.rows) > 1 {
+		t.Errorf("len(c.rows)=%d, wanted %d", len(c.rows), 1)
 	}
 }
 

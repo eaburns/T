@@ -47,6 +47,9 @@ func execCmd(c *Col, s *Sheet, exec string) error {
 		return s.Put()
 
 	default:
+		if exec == "" {
+			return nil
+		}
 		if isDir, err := openDir(c, s, exec); isDir {
 			return err
 		}
@@ -55,6 +58,10 @@ func execCmd(c *Col, s *Sheet, exec string) error {
 }
 
 func lookText(c *Col, s *Sheet, text string) error {
+	if text == "" {
+		return nil
+	}
+
 	path, err := abs(s, text)
 	if err != nil {
 		setLook(c, s, text)
