@@ -12,6 +12,7 @@ import (
 	"github.com/eaburns/T/rope"
 )
 
+// execCmd handles 2-click text.
 // c is non-nil
 // s may be nil
 func execCmd(c *Col, s *Sheet, exec string) error {
@@ -51,6 +52,62 @@ func execCmd(c *Col, s *Sheet, exec string) error {
 		}
 	}
 	return nil
+}
+
+func lookText(c *Col, s *Sheet, text string) error {
+	path, err := abs(s, text)
+	if err != nil {
+		setLook(c, s, text)
+		return nil
+	}
+
+	if focusSheet(c.win, path) {
+		return nil
+	}
+	if focusSheet(c.win, ensureTrailingSlash(path)) {
+		return nil
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		setLook(c, s, text)
+		return nil
+	}
+	defer f.Close()
+	s = NewSheet(c.win, path)
+	if err := get(s, f); err != nil {
+		return err
+	}
+	c.Add(s)
+	return nil
+}
+
+func focusSheet(w *Win, title string) bool {
+	for _, c := range w.cols {
+		for _, r := range c.rows {
+			s, ok := r.(*Sheet)
+			if !ok || s.Title() != title {
+				continue
+			}
+
+			if w.Col != c {
+				w.Col.Focus(false)
+				w.Col = c
+				w.Col.Focus(true)
+			}
+			if c.Row != s {
+				c.Row.Focus(false)
+				c.Row = s
+				c.Row.Focus(true)
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func setLook(c *Col, s *Sheet, text string) {
+	// TODO: 3-clicking a non-file should highlight matches in the sheet.
 }
 
 func openDir(c *Col, s *Sheet, path string) (bool, error) {

@@ -35,7 +35,14 @@ var (
 )
 
 func newTestWin() *Win {
-	return &Win{face: basicfont.Face7x13, lineHeight: H}
+	w := &Win{
+		face:       basicfont.Face7x13,
+		lineHeight: H,
+	}
+	c := NewCol(w)
+	w.cols = []*Col{c}
+	w.Col = c
+	return w
 }
 
 func TestEdit(t *testing.T) {

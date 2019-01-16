@@ -316,19 +316,28 @@ func (c *Col) Click(pt image.Point, button int) {
 	}
 	pt.Y -= y0(c, focusedRow(c))
 	button, addr := c.Row.Click(pt, button)
-	if button == -2 {
+	if button == -2 || button == -3 {
 		tb := getTextBox(c.Row)
 		if tb == nil {
 			return
 		}
-		if err := execCmd(c, getSheet(c.Row), getCmd(tb, addr)); err != nil {
+		var err error
+		s := getSheet(c.Row)
+		txt := getClickText(tb, addr)
+		switch button {
+		case -2:
+			err = execCmd(c, s, txt)
+		case -3:
+			err = lookText(c, s, txt)
+		}
+		if err != nil {
 			// TODO: print command errors to a sheet.
 			fmt.Println(err.Error())
 		}
 	}
 }
 
-func getCmd(tb *TextBox, addr [2]int64) string {
+func getClickText(tb *TextBox, addr [2]int64) string {
 	if addr[0] < addr[1] {
 		return rope.Slice(tb.text, addr[0], addr[1]).String()
 	}
