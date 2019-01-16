@@ -49,7 +49,7 @@ type Row interface {
 	// 	+y is roll down.
 	// 	-x is roll left.
 	// 	+x is roll right.
-	Wheel(x, y int)
+	Wheel(pt image.Point, x, y int)
 
 	// Dir handles keyboard directional events.
 	//

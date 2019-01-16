@@ -133,6 +133,16 @@ func (s *Sheet) Move(pt image.Point) {
 	s.TextBox.Move(pt)
 }
 
+// Wheel handles mouse wheel events.
+func (s *Sheet) Wheel(pt image.Point, x, y int) {
+	if pt.Y < s.tagH {
+		s.tag.Wheel(pt, x, y)
+	} else {
+		pt.Y -= s.tagH
+		s.body.Wheel(pt, x, y)
+	}
+}
+
 // Click handles click events.
 func (s *Sheet) Click(pt image.Point, button int) (int, [2]int64) {
 	if button > 0 {

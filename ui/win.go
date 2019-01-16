@@ -167,6 +167,17 @@ func resizeCol(w *Win, x int) {
 	}
 }
 
+// Wheel handles mouse wheel events.
+func (w *Win) Wheel(pt image.Point, x, y int) {
+	for i, c := range w.cols {
+		if pt.X < x1(w, i) {
+			pt.X -= x0(w, i)
+			c.Wheel(pt, x, y)
+			return
+		}
+	}
+}
+
 // Click handles click events.
 func (w *Win) Click(pt image.Point, button int) {
 	if w.resizing >= 0 && button == -1 {

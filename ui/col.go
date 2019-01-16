@@ -294,6 +294,17 @@ func clampFrac(f float64) float64 {
 	}
 }
 
+// Wheel handles mouse wheel events.
+func (c *Col) Wheel(pt image.Point, x, y int) {
+	for i, r := range c.rows {
+		if pt.Y < y1(c, i) {
+			pt.Y -= y0(c, i)
+			r.Wheel(pt, x, y)
+			return
+		}
+	}
+}
+
 // Click handles click events.
 func (c *Col) Click(pt image.Point, button int) {
 	if c.resizing >= 0 && button == -1 {

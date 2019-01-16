@@ -168,16 +168,16 @@ func poll(scr screen.Screen, w *win) {
 func mouseEvent(w *win, e mouse.Event) {
 	switch pt := image.Pt(int(e.X), int(e.Y)); {
 	case e.Button == mouse.ButtonWheelUp:
-		w.win.Wheel(0, 1)
+		w.win.Wheel(pt, 0, 1)
 
 	case e.Button == mouse.ButtonWheelDown:
-		w.win.Wheel(0, -1)
+		w.win.Wheel(pt, 0, -1)
 
 	case e.Button == mouse.ButtonWheelLeft:
-		w.win.Wheel(-1, 0)
+		w.win.Wheel(pt, -1, 0)
 
 	case e.Button == mouse.ButtonWheelRight:
-		w.win.Wheel(1, 0)
+		w.win.Wheel(pt, 1, 0)
 
 	case e.Direction == mouse.DirNone:
 		w.win.Move(pt)

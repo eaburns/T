@@ -274,7 +274,7 @@ func (b *TextBox) Move(pt image.Point) {
 // 	+y is roll down.
 // 	-x is roll left.
 // 	+x is roll right.
-func (b *TextBox) Wheel(x, y int) {
+func (b *TextBox) Wheel(_ image.Point, x, y int) {
 	now := b.now()
 	if b.wheelTime.After(now) {
 		return

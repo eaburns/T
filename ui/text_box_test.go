@@ -827,17 +827,17 @@ func TestWheelUp(t *testing.T) {
 	}
 	b.at = text.Len() - 2
 
-	b.Wheel(0, -1)
+	b.Wheel(image.ZP, 0, -1)
 	if want := text.Len() - 1; b.at != want {
 		t.Fatalf("WheelUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.Wheel(0, -1)
+	b.Wheel(image.ZP, 0, -1)
 	if want := text.Len(); b.at != want {
 		t.Fatalf("WheelUp WheelUp, at=%d, wanted %d", b.at, want)
 	}
 
-	b.Wheel(0, -1)
+	b.Wheel(image.ZP, 0, -1)
 	if want := text.Len(); b.at != want {
 		t.Errorf("WheelUp WheelUp WheelUp, at=%d, wanted %d", b.at, want)
 	}
@@ -855,17 +855,17 @@ func TestWheelDown(t *testing.T) {
 	}
 	b.at = 2
 
-	b.Wheel(0, +1)
+	b.Wheel(image.ZP, 0, +1)
 	if b.at != 1 {
 		t.Fatalf("WheelDown, at=%d, wanted 1", b.at)
 	}
 
-	b.Wheel(0, +1)
+	b.Wheel(image.ZP, 0, +1)
 	if b.at != 0 {
 		t.Fatalf("WheelDown WheelDown, at=%d, wanted 0", b.at)
 	}
 
-	b.Wheel(0, +1)
+	b.Wheel(image.ZP, 0, +1)
 	if b.at != 0 {
 		t.Errorf("WheelDown WheelDown WheelDown, at=%d, wanted 0", b.at)
 	}
