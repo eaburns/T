@@ -56,22 +56,26 @@ func (w *Win) Add() *Col {
 }
 
 // Del deletes a column unless it is the last column.
-func (w *Win) Del(col *Col) {
+func (w *Win) Del(c *Col) {
 	if len(w.cols) == 1 {
 		return
 	}
-	for i := range w.cols {
-		if w.cols[i] == col {
-			w.cols = append(w.cols[:i], w.cols[i+1:]...)
-			w.widths = append(w.widths[:i], w.widths[i+1:]...)
-			w.widths[len(w.cols)-1] = 1.0
-			if col == w.Col {
-				w.Col = w.cols[0]
-			}
-			w.Resize(w.size)
-			return
-		}
+	i := colIndex(c)
+	if i < 0 {
+		return
 	}
+	w.cols = append(w.cols[:i], w.cols[i+1:]...)
+	w.widths = append(w.widths[:i], w.widths[i+1:]...)
+	w.widths[len(w.cols)-1] = 1.0
+	if w.Col == c {
+		if i == 0 {
+			w.Col = w.cols[0]
+		} else {
+			w.Col = w.cols[i-1]
+		}
+		w.Col.Focus(true)
+	}
+	w.Resize(w.size)
 }
 
 // Tick handles tick events.
@@ -238,10 +242,9 @@ func x1(w *Win, i int) int { return int(w.widths[i] * dx(w)) }
 func dx(w *Win) float64 { return float64(w.size.X) }
 
 func focusedCol(w *Win) int {
-	for i, c := range w.cols {
-		if c == w.Col {
-			return i
-		}
+	i := colIndex(w.Col)
+	if i < 0 {
+		return 0
 	}
-	return 0
+	return i
 }

@@ -62,18 +62,27 @@ func (c *Col) Add(row Row) {
 }
 
 // Del deletes a row from the column.
-func (c *Col) Del(row Row) {
-	for i := 1; i < len(c.rows); i++ {
-		if c.rows[i] == row {
-			c.rows = append(c.rows[:i], c.rows[i+1:]...)
-			c.heights = append(c.heights[:i-1], c.heights[i:]...)
-			if row == c.Row {
-				c.Row = c.rows[0]
-			}
-			c.Resize(c.size)
-			return
+func (c *Col) Del(r Row) {
+	i := rowIndex(c, r)
+	if i == 0 {
+		return
+	}
+	c.rows = append(c.rows[:i], c.rows[i+1:]...)
+	c.heights = append(c.heights[:i-1], c.heights[i:]...)
+	if c.Row == r {
+		c.Row = c.rows[i-1]
+		c.Row.Focus(true)
+	}
+	c.Resize(c.size)
+}
+
+func rowIndex(c *Col, r Row) int {
+	for i := range c.rows {
+		if c.rows[i] == r {
+			return i
 		}
 	}
+	return -1
 }
 
 // Tick handles tick events.
