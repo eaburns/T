@@ -1,3 +1,4 @@
+// Package ui is the user interface of the editor.
 package ui
 
 import (
