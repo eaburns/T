@@ -117,11 +117,17 @@ func showOutput(w *Win) bool {
 		At:   [2]int64{b.text.Len(), b.text.Len()},
 		Text: rope.New(output),
 	}})
+	setDot(b, 1, b.text.Len(), b.text.Len())
+	// TODO: only showAddr on Output if it was visible to begin with.
+	// If the user scrolls up, for example, we shouldn't scroll them back down.
+	// This should probably just be the behavior of b.Change by default.
+	showAddr(b, b.dots[1].At[1])
+
 	w.outputBuffer.Reset()
 	for _, c := range w.cols {
 		for _, r := range c.rows {
 			if r == w.output {
-				return false
+				return true
 			}
 		}
 	}
