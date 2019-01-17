@@ -53,6 +53,7 @@ func (w *Win) Add() *Col {
 	w.widths[len(w.widths)-1] = f
 	w.widths = append(w.widths, 1.0)
 	w.Resize(w.size)
+	setWinFocus(w, col)
 	return col
 }
 
@@ -70,11 +71,10 @@ func (w *Win) Del(c *Col) {
 	w.widths[len(w.cols)-1] = 1.0
 	if w.Col == c {
 		if i == 0 {
-			w.Col = w.cols[0]
+			setWinFocus(w, w.cols[0])
 		} else {
-			w.Col = w.cols[i-1]
+			setWinFocus(w, w.cols[i-1])
 		}
-		w.Col.Focus(true)
 	}
 	w.Resize(w.size)
 }
@@ -200,27 +200,19 @@ func (w *Win) Click(pt image.Point, button int) {
 	}
 
 	if button > 0 {
-		setWinFocus(w, pt, button)
+		setWinFocusPt(w, pt)
 	}
 	pt.X -= x0(w, focusedCol(w))
 	w.Col.Click(pt, button)
 }
 
-func setWinFocus(w *Win, pt image.Point, button int) bool {
-	var i int
-	var c *Col
-	for i, c = range w.cols {
+func setWinFocusPt(w *Win, pt image.Point) {
+	for i, c := range w.cols {
 		if pt.X < x1(w, i) {
+			setWinFocus(w, c)
 			break
 		}
 	}
-	if w.Col != c {
-		w.Col.Focus(false)
-		c.Focus(true)
-		w.Col = c
-		return true
-	}
-	return false
 }
 
 // Focus handles focus change events.
@@ -252,6 +244,15 @@ func x0(w *Win, i int) int {
 func x1(w *Win, i int) int { return int(w.widths[i] * dx(w)) }
 
 func dx(w *Win) float64 { return float64(w.size.X) }
+
+func setWinFocus(w *Win, c *Col) {
+	if w.Col == c {
+		return
+	}
+	w.Col.Focus(false)
+	c.Focus(true)
+	w.Col = c
+}
 
 func focusedCol(w *Win) int {
 	i := colIndex(w.Col)

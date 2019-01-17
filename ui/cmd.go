@@ -96,17 +96,8 @@ func focusSheet(w *Win, title string) bool {
 			if !ok || s.Title() != title {
 				continue
 			}
-
-			if w.Col != c {
-				w.Col.Focus(false)
-				w.Col = c
-				w.Col.Focus(true)
-			}
-			if c.Row != s {
-				c.Row.Focus(false)
-				c.Row = s
-				c.Row.Focus(true)
-			}
+			setWinFocus(w, c)
+			setColFocus(c, s)
 			return true
 		}
 	}

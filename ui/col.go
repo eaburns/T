@@ -55,10 +55,8 @@ func (c *Col) Add(row Row) {
 		c.heights = append(c.heights, 1.0)
 	}
 	c.rows = append(c.rows, row)
-	c.Row.Focus(false)
-	row.Focus(true)
-	c.Row = row
 	c.Resize(c.size)
+	setColFocus(c, row)
 }
 
 // Del deletes a row from the column.
@@ -69,10 +67,7 @@ func (c *Col) Del(r Row) {
 	}
 	c.rows = append(c.rows[:i], c.rows[i+1:]...)
 	c.heights = append(c.heights[:i-1], c.heights[i:]...)
-	if c.Row == r {
-		c.Row = c.rows[i-1]
-		c.Row.Focus(true)
-	}
+	setColFocus(c, c.rows[i-1])
 	c.Resize(c.size)
 }
 
@@ -311,6 +306,7 @@ func (c *Col) Click(pt image.Point, button int) {
 		c.resizing = -1
 		return
 	}
+
 	if button == 1 {
 		for i := range c.rows[:len(c.rows)] {
 			r := c.rows[i]
@@ -320,11 +316,7 @@ func (c *Col) Click(pt image.Point, button int) {
 			}
 			handle := handler.HandleBounds().Add(image.Pt(0, y0(c, i)))
 			if pt.In(handle) {
-				if c.Row != r {
-					c.Row.Focus(false)
-					r.Focus(true)
-					c.Row = r
-				}
+				setColFocus(c, r)
 				c.resizing = i - 1
 				return
 			}
@@ -332,8 +324,9 @@ func (c *Col) Click(pt image.Point, button int) {
 	}
 
 	if button > 0 {
-		setColFocus(c, pt, button)
+		setColFocusPt(c, pt)
 	}
+
 	pt.Y -= y0(c, focusedRow(c))
 	button, addr := c.Row.Click(pt, button)
 	if button == -2 || button == -3 {
@@ -353,6 +346,15 @@ func (c *Col) Click(pt image.Point, button int) {
 		if err != nil {
 			// TODO: print command errors to a sheet.
 			fmt.Println(err.Error())
+		}
+	}
+}
+
+func setColFocusPt(c *Col, pt image.Point) {
+	for i, o := range c.rows {
+		if pt.Y < y1(c, i) {
+			setColFocus(c, o)
+			return
 		}
 	}
 }
@@ -399,23 +401,6 @@ func getSheet(r Row) *Sheet {
 	return nil
 }
 
-func setColFocus(c *Col, pt image.Point, button int) bool {
-	var i int
-	var o Row
-	for i, o = range c.rows {
-		if pt.Y < y1(c, i) {
-			break
-		}
-	}
-	if c.Row != o {
-		c.Row.Focus(false)
-		o.Focus(true)
-		c.Row = o
-		return true
-	}
-	return false
-}
-
 func y0(c *Col, i int) int {
 	if i == 0 {
 		return 0
@@ -426,6 +411,15 @@ func y0(c *Col, i int) int {
 func y1(c *Col, i int) int { return int(c.heights[i] * dy(c)) }
 
 func dy(c *Col) float64 { return float64(c.size.Y) }
+
+func setColFocus(c *Col, r Row) {
+	if c.Row == r {
+		return
+	}
+	c.Row.Focus(false)
+	r.Focus(true)
+	c.Row = r
+}
 
 func focusedRow(c *Col) int {
 	for i, o := range c.rows {
