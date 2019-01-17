@@ -4,7 +4,11 @@ package ui
 import (
 	"image"
 	"image/draw"
+	"strings"
+	"sync"
 
+	"github.com/eaburns/T/edit"
+	"github.com/eaburns/T/rope"
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 )
@@ -20,6 +24,10 @@ type Win struct {
 	resizing   int       // col index being resized or -1
 	mods       [4]bool   // currently held modifier keys
 	*Col                 // focus
+	output     *Sheet
+
+	mu           sync.Mutex
+	outputBuffer strings.Builder
 }
 
 // NewWin returns a new window.
@@ -39,6 +47,7 @@ func NewWin(dpi float32) *Win {
 	w.cols = []*Col{NewCol(w)}
 	w.widths = []float64{1.0}
 	w.Col = w.cols[0]
+	w.output = NewSheet(w, "Output")
 	return w
 }
 
@@ -82,12 +91,42 @@ func (w *Win) Del(c *Col) {
 // Tick handles tick events.
 func (w *Win) Tick() bool {
 	var redraw bool
+	if showOutput(w) {
+		redraw = true
+	}
 	for _, c := range w.cols {
 		if c.Tick() {
 			redraw = true
 		}
 	}
 	return redraw
+}
+
+func showOutput(w *Win) bool {
+	w.mu.Lock()
+	output := w.outputBuffer.String()
+	w.outputBuffer.Reset()
+	w.mu.Unlock()
+
+	if len(output) == 0 {
+		return false
+	}
+
+	b := w.output.body
+	b.Change(edit.Diffs{{
+		At:   [2]int64{b.text.Len(), b.text.Len()},
+		Text: rope.New(output),
+	}})
+	w.outputBuffer.Reset()
+	for _, c := range w.cols {
+		for _, r := range c.rows {
+			if r == w.output {
+				return false
+			}
+		}
+	}
+	w.cols[len(w.cols)-1].Add(w.output)
+	return true
 }
 
 // Draw draws the window.
@@ -232,6 +271,24 @@ func (w *Win) Mod(m int) {
 		w.mods[-m] = false
 	}
 	w.Col.Mod(m)
+}
+
+// OutputString appends a string to the Output sheet
+// and ensures that the Output sheet is visible.
+// It is safe for concurrent calls.
+func (w *Win) OutputString(str string) {
+	w.mu.Lock()
+	w.outputBuffer.WriteString(str)
+	w.mu.Unlock()
+}
+
+// OutputBytes appends bytes to the Output sheet
+// and ensures that the Output sheet is visible.
+// It is safe for concurrent calls.
+func (w *Win) OutputBytes(data []byte) {
+	w.mu.Lock()
+	w.outputBuffer.Write(data)
+	w.mu.Unlock()
 }
 
 func x0(w *Win, i int) int {

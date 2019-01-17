@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"image"
 	"image/draw"
 	"unicode"
@@ -343,8 +342,7 @@ func (c *Col) Click(pt image.Point, button int) {
 			err = lookText(c, s, txt)
 		}
 		if err != nil {
-			// TODO: print command errors to a sheet.
-			fmt.Println(err.Error())
+			c.win.OutputString(err.Error() + "\n")
 		}
 	}
 }
