@@ -1,9 +1,12 @@
 package ui
 
 import (
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -15,8 +18,8 @@ import (
 // execCmd handles 2-click text.
 // c is non-nil
 // s may be nil
-func execCmd(c *Col, s *Sheet, exec string) error {
-	switch cmd, _ := splitCmd(exec); cmd {
+func execCmd(c *Col, s *Sheet, text string) error {
+	switch cmd, _ := splitCmd(text); cmd {
 	case "Del":
 		if s == nil {
 			c.win.Del(c)
@@ -47,14 +50,60 @@ func execCmd(c *Col, s *Sheet, exec string) error {
 		return s.Put()
 
 	default:
-		if exec == "" {
+		if text == "" {
 			return nil
 		}
-		if isDir, err := openDir(c, s, exec); isDir {
+		if isDir, err := openDir(c, s, text); isDir {
 			return err
 		}
+		go func() {
+			if err := shellCmd(c.win, text); err != nil {
+				c.win.OutputString(err.Error())
+			}
+		}()
+		return nil
 	}
 	return nil
+}
+
+func shellCmd(w *Win, text string) error {
+	// TODO: set 2-click shell command CWD to the sheet's directory.
+	// If executed from outside of a sheet, then don't set it specifically.
+	cmd := exec.Command("sh", "-c", text)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		stderr.Close()
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		stderr.Close()
+		stdout.Close()
+		return err
+	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go pipeOutput(&wg, w, stdout)
+	go pipeOutput(&wg, w, stderr)
+	wg.Wait()
+	return cmd.Wait()
+}
+
+func pipeOutput(wg *sync.WaitGroup, w *Win, pipe io.Reader) {
+	defer wg.Done()
+	var buf [4096]byte
+	for {
+		n, err := pipe.Read(buf[:])
+		if n > 0 {
+			w.OutputBytes(buf[:n])
+		}
+		if err != nil {
+			return
+		}
+	}
 }
 
 func lookText(c *Col, s *Sheet, text string) error {
