@@ -21,7 +21,6 @@ type Col struct {
 }
 
 // NewCol returns a new column.
-// TODO: NewCol is just a temporary implementation.
 func NewCol(w *Win) *Col {
 	var (
 		bodyTextStyles = [...]text.Style{
