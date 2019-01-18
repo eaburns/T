@@ -570,11 +570,6 @@ func upDown(b *TextBox, dir string) int64 {
 
 	// rune offset into the line
 	max := at[1]
-	if dir == "-" && max == 0 {
-		// TODO: This should be handled by Addr returning an error.
-		// However, there seems to be a bug in edit, where it panics.
-		return 0
-	}
 	at, err = edit.Addr([2]int64{at[0], at[0]}, "+#"+strconv.Itoa(b.cursorCol), b.text)
 	if err != nil || max == 0 {
 		return max
