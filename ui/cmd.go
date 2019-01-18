@@ -38,16 +38,29 @@ func execCmd(c *Col, s *Sheet, text string) error {
 		c.Add(NewSheet(c.win, ""))
 
 	case "Get":
-		if s == nil {
-			return nil
+		if s != nil {
+			return s.Get()
 		}
-		return s.Get()
 
 	case "Put":
-		if s == nil {
-			return nil
+		if s != nil {
+			return s.Put()
 		}
-		return s.Put()
+
+	case "Copy":
+		if s != nil {
+			return s.body.Copy()
+		}
+
+	case "Cut":
+		if s != nil {
+			return s.body.Cut()
+		}
+
+	case "Paste":
+		if s != nil {
+			return s.body.Paste()
+		}
 
 	default:
 		if text == "" {

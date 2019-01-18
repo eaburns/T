@@ -27,7 +27,7 @@ const (
 	colText = "Del NewCol NewRow\n"
 
 	// tagText is the default tag text.
-	tagText = " Del "
+	tagText = " Del Cut Paste"
 )
 
 var (
