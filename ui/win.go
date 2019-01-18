@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/eaburns/T/clipboard"
 	"github.com/eaburns/T/edit"
 	"github.com/eaburns/T/rope"
 	"github.com/golang/freetype/truetype"
@@ -15,15 +16,17 @@ import (
 
 // A Win is a window of columns of sheets.
 type Win struct {
+	size     image.Point
+	*Col     // focus
+	cols     []*Col
+	widths   []float64 // frac of width
+	resizing int       // col index being resized or -1
+
 	dpi        float32
-	face       font.Face // default font face
 	lineHeight int
-	size       image.Point
-	cols       []*Col
-	widths     []float64 // frac of width
-	resizing   int       // col index being resized or -1
-	mods       [4]bool   // currently held modifier keys
-	*Col                 // focus
+	mods       [4]bool // currently held modifier keys
+	clipboard  clipboard.Clipboard
+	face       font.Face // default font face
 	output     *Sheet
 
 	mu           sync.Mutex
@@ -38,10 +41,11 @@ func NewWin(dpi float32) *Win {
 	})
 	h := (face.Metrics().Height + face.Metrics().Descent).Ceil()
 	w := &Win{
+		resizing:   -1,
 		dpi:        dpi,
 		face:       face,
 		lineHeight: h,
-		resizing:   -1,
+		clipboard:  clipboard.New(),
 	}
 	w.cols = []*Col{NewCol(w)}
 	w.widths = []float64{1.0}

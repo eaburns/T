@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eaburns/T/clipboard"
 	"github.com/eaburns/T/rope"
 	"github.com/eaburns/T/syntax"
 	"github.com/eaburns/T/text"
@@ -30,13 +31,15 @@ var (
 	testTextStyles = [4]text.Style{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
 	testSize       = image.Pt(200, 200)
 	zp             = image.Pt(textPadPx, 0)
-	testWin        = newTestWin()
+	// TODO: stop using the testWin variable and call newTestWin.
+	testWin = newTestWin()
 )
 
 func newTestWin() *Win {
 	w := &Win{
 		face:       basicfont.Face7x13,
 		lineHeight: H,
+		clipboard:  clipboard.NewMem(),
 	}
 	c := NewCol(w)
 	w.cols = []*Col{c}
@@ -1324,5 +1327,155 @@ func goldenImageTest(img image.Image, t *testing.T) {
 	if !bytes.Equal(got, want) {
 		ioutil.WriteFile(newFile, got, 0666)
 		t.Errorf("%s does not match %s\n", newFile, goldenFile)
+	}
+}
+
+func TestCopy_Empty(t *testing.T) {
+	w := newTestWin()
+	b := NewTextBox(w, testTextStyles, testSize)
+	if err := b.Copy(); err != nil {
+		t.Fatalf("copy failed: %v", err)
+	}
+	got, err := w.clipboard.Fetch()
+	if err != nil {
+		t.Fatalf("ReadAll failed: %v", err)
+	}
+	if got.String() != "" {
+		t.Errorf(`clipboard is %q, wanted ""`, got)
+	}
+}
+
+func TestCopy(t *testing.T) {
+	w := newTestWin()
+	b := NewTextBox(w, testTextStyles, testSize)
+	b.SetText(rope.New("Hello, 世界"))
+	b.dots[1].At[0] = int64(len("Hello, "))
+	b.dots[1].At[1] = int64(len("Hello, ") + len("世界"))
+	if err := b.Copy(); err != nil {
+		t.Fatalf("copy failed: %v", err)
+	}
+	got, err := w.clipboard.Fetch()
+	if err != nil {
+		t.Fatalf("ReadAll failed: %v", err)
+	}
+	if got.String() != "世界" {
+		t.Errorf(`clipboard is %q, wanted "世界"`, got)
+	}
+}
+
+func TestCut_Empty(t *testing.T) {
+	w := newTestWin()
+	b := NewTextBox(w, testTextStyles, testSize)
+	if err := b.Cut(); err != nil {
+		t.Fatalf("copy failed: %v", err)
+	}
+	got, err := w.clipboard.Fetch()
+	if err != nil {
+		t.Fatalf("ReadAll failed: %v", err)
+	}
+	if got.String() != "" {
+		t.Errorf(`clipboard is %q, wanted ""`, got)
+	}
+	if text := b.text.String(); text != "" {
+		t.Errorf(`text is %q, wanted ""`, text)
+	}
+}
+
+func TestCut(t *testing.T) {
+	w := newTestWin()
+	b := NewTextBox(w, testTextStyles, testSize)
+	b.SetText(rope.New("Hello, 世界"))
+	b.dots[1].At[0] = int64(len("Hello, "))
+	b.dots[1].At[1] = int64(len("Hello, ") + len("世界"))
+	if err := b.Cut(); err != nil {
+		t.Fatalf("copy failed: %v", err)
+	}
+	got, err := w.clipboard.Fetch()
+	if err != nil {
+		t.Fatalf("ReadAll failed: %v", err)
+	}
+	if got.String() != "世界" {
+		t.Errorf(`clipboard is %q, wanted "世界"`, got)
+	}
+	if text := b.text.String(); text != "Hello, " {
+		t.Errorf(`text is %q, wanted "Hello, "`, text)
+	}
+}
+
+func TestPaste(t *testing.T) {
+	tests := []struct {
+		name  string
+		body  string
+		dot   [2]int64
+		paste string
+		want  string
+	}{
+		{
+			name:  "empty",
+			body:  "",
+			dot:   [2]int64{0, 0},
+			paste: "",
+			want:  "",
+		},
+		{
+			name:  "empty paste into point",
+			body:  "Hello, World",
+			dot:   [2]int64{1, 1},
+			paste: "",
+			want:  "Hello, World",
+		},
+		{
+			name:  "empty paste into range",
+			body:  "Hello, World",
+			dot:   [2]int64{5, 12},
+			paste: "",
+			want:  "Hello",
+		},
+		{
+			name:  "non-empty paste into point",
+			body:  "Hello, World",
+			dot:   [2]int64{1, 1},
+			paste: "XYZ",
+			want:  "HXYZello, World",
+		},
+		{
+			name:  "non-empty paste into range",
+			body:  "Hello, World",
+			dot:   [2]int64{7, 12},
+			paste: "世界",
+			want:  "Hello, 世界",
+		},
+		{
+			name:  "paste at bof",
+			body:  "World",
+			dot:   [2]int64{0, 0},
+			paste: "Hello, ",
+			want:  "Hello, World",
+		},
+		{
+			name:  "paste at eof",
+			body:  "Hello",
+			dot:   [2]int64{5, 5},
+			paste: ", World",
+			want:  "Hello, World",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			w := newTestWin()
+			b := NewTextBox(w, testTextStyles, testSize)
+			b.SetText(rope.New(test.body))
+			b.dots[1].At = test.dot
+			if err := w.clipboard.Store(rope.New(test.paste)); err != nil {
+				t.Fatalf("Store(%q)=%v, want nil", test.paste, err)
+			}
+			if err := b.Paste(); err != nil {
+				t.Fatalf("Paste()=%v, want nil", err)
+			}
+			if got := b.text.String(); got != test.want {
+				t.Errorf("got body %q, want %q", got, test.want)
+			}
+		})
 	}
 }

@@ -197,6 +197,32 @@ func (b *TextBox) Change(diffs edit.Diffs) {
 	}
 }
 
+// Copy copies the selected text into the system clipboard.
+func (b *TextBox) Copy() error {
+	r := rope.Slice(b.text, b.dots[1].At[0], b.dots[1].At[1])
+	return b.win.clipboard.Store(r)
+}
+
+// Paste pastes the text from the system clipboard to the selection.
+func (b *TextBox) Paste() error {
+	r, err := b.win.clipboard.Fetch()
+	if err != nil {
+		return err
+	}
+	b.Change(edit.Diffs{{At: b.dots[1].At, Text: r}})
+	return nil
+}
+
+// Cut copies the selected text into the system clipboard
+// and deletes it from the text box.
+func (b *TextBox) Cut() error {
+	if err := b.Copy(); err != nil {
+		return err
+	}
+	b.Change(edit.Diffs{{At: b.dots[1].At, Text: rope.Empty()}})
+	return nil
+}
+
 // Resize handles a resize event.
 // The text box must always be redrawn after being resized.
 func (b *TextBox) Resize(size image.Point) {
