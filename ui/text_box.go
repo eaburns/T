@@ -182,8 +182,8 @@ func (b *TextBox) Change(diffs edit.Diffs) {
 	dirtyLines(b)
 	b.text, _ = diffs.Apply(b.text)
 
-	// TODO: if something else deletes \n before b.at,
-	// scroll to beginning of whatever the line becomes.
+	// TODO: if something else deletes \n before TextBox.at, scroll up
+	// to the beginning of the previous line.
 	b.at = diffs.Update([2]int64{b.at, b.at})[0]
 
 	for i := 1; i < len(b.dots); i++ {

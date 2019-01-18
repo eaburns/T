@@ -30,8 +30,7 @@ var (
 	testTextStyles = [4]text.Style{testTextStyle1, testTextStyle2, testTextStyle3, testTextStyle4}
 	testSize       = image.Pt(200, 200)
 	zp             = image.Pt(textPadPx, 0)
-	// TODO: each test should create its own testWin
-	testWin = newTestWin()
+	testWin        = newTestWin()
 )
 
 func newTestWin() *Win {

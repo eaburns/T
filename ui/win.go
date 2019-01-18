@@ -31,7 +31,6 @@ type Win struct {
 }
 
 // NewWin returns a new window.
-// TODO: NewWin is just a temporary implementation.
 func NewWin(dpi float32) *Win {
 	face := truetype.NewFace(defaultFont, &truetype.Options{
 		Size: float64(defaultFontSize),
@@ -118,7 +117,7 @@ func showOutput(w *Win) bool {
 		Text: rope.New(output),
 	}})
 	setDot(b, 1, b.text.Len(), b.text.Len())
-	// TODO: only showAddr on Output if it was visible to begin with.
+	// TODO: only showAddr on Output if the cursor was visible to begin with.
 	// If the user scrolls up, for example, we shouldn't scroll them back down.
 	// This should probably just be the behavior of b.Change by default.
 	showAddr(b, b.dots[1].At[1])
