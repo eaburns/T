@@ -28,6 +28,7 @@ gocyclo -over 15 .\
 	| grep -v 'main Main text/main.go'\
 	| grep -v 'main Main ui/main.go'\
 	| grep -v 'ui execCmd ui/cmd.go'\
+	| grep -v 'edit runEditTest edit/edit_test.go'\
 	> $o 2>&1
 e=$(mktemp tmp.XXXXXXXXXX)
 touch $e

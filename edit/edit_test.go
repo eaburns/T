@@ -549,8 +549,9 @@ func TestEdit(t *testing.T) {
 			cases: []testCase{
 				{edit: "100", err: "address out of range"},
 				{edit: "a/hi/ N", err: "expected end-of-input"},
-				{edit: "", err: "no command"},
+				{edit: "", err: "no command", newdot: []int64{0, 0}},
 				{edit: "N", err: "bad command N"},
+				{edit: "/l+/", err: "no command", newdot: []int64{2, 4}},
 			},
 		},
 		{
@@ -956,10 +957,11 @@ type test struct {
 }
 
 type testCase struct {
-	edit  string
-	want  string
-	print string // regex
-	err   string // regex
+	edit   string
+	newdot []int64
+	want   string
+	print  string // regex
+	err    string // regex
 }
 
 func runAddrTest(t *testing.T, test test) {
@@ -1026,6 +1028,15 @@ func runEditTest(t *testing.T, test test) {
 			if !match(c.print, print.String()) {
 				t.Errorf("(%q).Edit(%q) print=%q, want matthing %q",
 					test.str, c.edit, print.String(), c.print)
+			}
+			if c.newdot != nil {
+				if ae, ok := err.(NoCommandError); !ok {
+					t.Errorf("(%q).Edit(%q) err=%T, want NoCommandError",
+						test.str, c.edit, err)
+				} else if ae.At[0] != c.newdot[0] || ae.At[1] != c.newdot[1] {
+					t.Errorf("(%q).Edit(%q) dot=%v, want %v",
+						test.str, c.edit, ae.At, c.newdot)
+				}
 			}
 		}
 	}
