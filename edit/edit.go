@@ -207,6 +207,19 @@ type Diff struct {
 	Text rope.Rope
 }
 
+// NoCommandError is returned when there was no command to execute.
+type NoCommandError struct {
+	// At contains the evaluation of the address preceding the missing command.
+	// An empty address is dot, so an empty edit results in a NoCommandError.
+	// At is set to the value of dot.
+	At [2]int64
+}
+
+// Error returns the error string "no command".
+func (e NoCommandError) Error() string {
+	return "no command"
+}
+
 // TextLen is the length of Text; 0 if Text is nil.
 func (d Diff) TextLen() int64 {
 	if d.Text == nil {
@@ -323,7 +336,7 @@ func edit(dot [2]int64, t string, print io.Writer, ro rope.Rope) (Diffs, string,
 	default:
 		return nil, "", errors.New("bad command " + string([]rune{r}))
 	case eof, '\n':
-		return nil, "", errors.New("no command")
+		return nil, "", NoCommandError{At: a}
 	case 'a', 'c', 'd', 'i':
 		return change(a, t, r, ro)
 	case 'm':
