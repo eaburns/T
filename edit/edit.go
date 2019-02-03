@@ -566,8 +566,9 @@ func loop(a [2]int64, t string, op rune, print io.Writer, ro rope.Rope) (Diffs, 
 		if ms == nil {
 			break
 		}
-		if ms[1] == ms[0] {
-			a[0]++
+		if ms[0] == ms[1] {
+			// If we matched empty, advance by one over it.
+			a[0] = ms[1] + 1
 		} else {
 			a[0] = ms[1]
 		}

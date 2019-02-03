@@ -771,6 +771,15 @@ func TestEdit(t *testing.T) {
 			},
 		},
 		{
+			name: "Issue #26: loop bug",
+			str:  "line1\nline2\nline3",
+			cases: []testCase{
+				// This was the original command from the bug report.
+				{edit: ",x/^/a/x /", want: "x line1\nx line2\nx line3"},
+				{edit: ",x/./a/x/", want: "lxixnxex1x\nlxixnxex2x\nlxixnxex3x"},
+			},
+		},
+		{
 			name: "loop mismatch",
 			str:  "line1\nline2\nline3",
 			cases: []testCase{
